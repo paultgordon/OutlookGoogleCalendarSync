@@ -12,7 +12,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         private static readonly ILog log = LogManager.GetLogger(typeof(Upgrade));
 
         //OGCS releases that require the settings XML to be upgraded
-        private const Int32 multipleCalendars = 2070901; //v2.7.9.1;
+        private static Int32 multipleCalendars = Program.VersionToInt("2.8.1.1");
 
         private static String settingsVersion;
         private static Int32 settingsVersionNum;
@@ -62,6 +62,9 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
                 XElement calendarsElement = XMLManager.AddElement("Calendars", settingsElement);
                 XElement calendarElement = XMLManager.AddElement("Calendar", calendarsElement);
 
+                //Manually add Profile Name - it's critical to be able to select the right profile later on and a Settings.Save() might not have happened.
+                XMLManager.AddElement("_ProfileName", calendarElement).Value = "Default";
+
                 XMLManager.MoveElement("OutlookService", settingsElement, calendarElement);
                 XMLManager.MoveElement("MailboxName", settingsElement, calendarElement);
                 XMLManager.MoveElement("SharedCalendar", settingsElement, calendarElement);
@@ -105,7 +108,8 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
                 XMLManager.MoveElement("Obfuscation", settingsElement, calendarElement);
                 
                 XMLManager.MoveElement("ExtirpateOgcsMetadata", settingsElement, calendarElement);
-                 
+                XMLManager.MoveElement("LastSyncDate", settingsElement, calendarElement);
+
             } catch (System.Exception ex) {
                 OGCSexception.Analyse("Problem encountered whilst upgrading " + Settings.ConfigFilename, ex);
                 throw ex;

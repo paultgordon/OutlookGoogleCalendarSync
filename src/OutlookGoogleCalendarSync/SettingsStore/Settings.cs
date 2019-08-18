@@ -42,7 +42,7 @@ namespace OutlookGoogleCalendarSync {
                 Settings.Instance.Save(ConfigFile);
                 log.Info("New blank template created.");
                 if (!Program.IsInstalled)
-                    XMLManager.ExportElement("Portable", true, ConfigFile);
+                    XMLManager.ExportElement(Settings.Instance, "Portable", true, ConfigFile);
             }
 
             log.Info("Running OGCS from " + System.Windows.Forms.Application.ExecutablePath);
@@ -54,7 +54,6 @@ namespace OutlookGoogleCalendarSync {
         private String assignedClientSecret;
         private Boolean apiLimit_inEffect;
         private DateTime apiLimit_lastHit;
-        private DateTime lastSyncDate;
         private Int32 completedSyncs;
         private Boolean portable;
         private Boolean alphaReleases;
@@ -65,9 +64,7 @@ namespace OutlookGoogleCalendarSync {
         private Boolean suppressSocialPopup;
         private bool? cloudLogging;
 
-        public Settings() {
-            setDefaults();
-        }
+        public Settings() { }
 
         //Default values before Loading() from xml and attribute not yet serialized
         [OnDeserializing]
@@ -111,7 +108,6 @@ namespace OutlookGoogleCalendarSync {
             hideSplashScreen = false;
             suppressSocialPopup = false;
             
-            lastSyncDate = new DateTime(0);
             completedSyncs = 0;
             VerboseOutput = true;
         }
@@ -122,7 +118,10 @@ namespace OutlookGoogleCalendarSync {
 
         public static Settings Instance {
             get {
-                if (instance == null) instance = new Settings();
+                if (instance == null) {
+                    instance = new Settings();
+                    instance.setDefaults();
+                }
                 return instance;
             }
             set {
@@ -135,14 +134,14 @@ namespace OutlookGoogleCalendarSync {
             get { return assignedClientIdentifier; }
             set {
                 assignedClientIdentifier = value.Trim();
-                if (!Loading()) XMLManager.ExportElement("AssignedClientIdentifier", value.Trim(), ConfigFile);
+                if (!Loading()) XMLManager.ExportElement(this, "AssignedClientIdentifier", value.Trim(), ConfigFile);
             }
         }
         [DataMember] public String AssignedClientSecret {
             get { return assignedClientSecret; }
             set {
                 assignedClientSecret = value.Trim();
-                if (!Loading()) XMLManager.ExportElement("AssignedClientSecret", value.Trim(), ConfigFile);
+                if (!Loading()) XMLManager.ExportElement(this, "AssignedClientSecret", value.Trim(), ConfigFile);
             }
         }
         private String personalClientIdentifier;
@@ -162,14 +161,14 @@ namespace OutlookGoogleCalendarSync {
             get { return apiLimit_inEffect; }
             set {
                 apiLimit_inEffect = value;
-                if (!Loading()) XMLManager.ExportElement("APIlimit_inEffect", value, ConfigFile);
+                if (!Loading()) XMLManager.ExportElement(this, "APIlimit_inEffect", value, ConfigFile);
             }
         }
         [DataMember] public DateTime APIlimit_lastHit {
             get { return apiLimit_lastHit; }
             set {
                 apiLimit_lastHit = value;
-                if (!Loading()) XMLManager.ExportElement("APIlimit_lastHit", value, ConfigFile);
+                if (!Loading()) XMLManager.ExportElement(this, "APIlimit_lastHit", value, ConfigFile);
             }
         }
         [DataMember] public String GaccountEmail { get; set; }
@@ -183,7 +182,7 @@ namespace OutlookGoogleCalendarSync {
             get { return hideSplashScreen; }
             set {
                 if (!Loading() && hideSplashScreen != value) {
-                    XMLManager.ExportElement("HideSplashScreen", value, ConfigFile);
+                    XMLManager.ExportElement(this, "HideSplashScreen", value, ConfigFile);
                     if (Forms.Main.Instance != null) Forms.Main.Instance.cbHideSplash.Checked = value;
                 }
                 hideSplashScreen = value;
@@ -194,7 +193,7 @@ namespace OutlookGoogleCalendarSync {
             get { return suppressSocialPopup; }
             set {
                 if (!Loading() && suppressSocialPopup != value) {
-                    XMLManager.ExportElement("SuppressSocialPopup", value, ConfigFile);
+                    XMLManager.ExportElement(this, "SuppressSocialPopup", value, ConfigFile);
                     if (Forms.Main.Instance != null) Forms.Main.Instance.cbSuppressSocialPopup.Checked = value;
                 }
                 suppressSocialPopup = value;
@@ -211,7 +210,7 @@ namespace OutlookGoogleCalendarSync {
             get { return portable; }
             set {
                 portable = value;
-                if (!Loading()) XMLManager.ExportElement("Portable", value, ConfigFile);
+                if (!Loading()) XMLManager.ExportElement(this, "Portable", value, ConfigFile);
             }
         }
 
@@ -222,7 +221,7 @@ namespace OutlookGoogleCalendarSync {
             set {
                 cloudLogging = value;
                 GoogleOgcs.ErrorReporting.SetThreshold(value ?? false);
-                if (!Loading()) XMLManager.ExportElement("CloudLogging", value, ConfigFile);
+                if (!Loading()) XMLManager.ExportElement(this, "CloudLogging", value, ConfigFile);
             }
         }
         //Proxy
@@ -234,7 +233,7 @@ namespace OutlookGoogleCalendarSync {
             get { return version; }
             set {
                 if (version != null && version != value) {
-                    XMLManager.ExportElement("Version", value, ConfigFile);
+                    XMLManager.ExportElement(this, "Version", value, ConfigFile);
                 }
                 version = value;
             }
@@ -243,7 +242,7 @@ namespace OutlookGoogleCalendarSync {
             get { return alphaReleases; }
             set {
                 alphaReleases = value;
-                if (!Loading()) XMLManager.ExportElement("AlphaReleases", value, ConfigFile);
+                if (!Loading()) XMLManager.ExportElement(this, "AlphaReleases", value, ConfigFile);
             }
         }
         public Boolean UserIsBenefactor() {
@@ -253,30 +252,23 @@ namespace OutlookGoogleCalendarSync {
             get { return subscribed; }
             set {
                 subscribed = value;
-                if (!Loading()) XMLManager.ExportElement("Subscribed", value, ConfigFile);
+                if (!Loading()) XMLManager.ExportElement(this, "Subscribed", value, ConfigFile);
             }
         }
         [DataMember] public Boolean Donor {
             get { return donor; }
             set {
                 donor = value;
-                if (!Loading()) XMLManager.ExportElement("Donor", value, ConfigFile);
+                if (!Loading()) XMLManager.ExportElement(this, "Donor", value, ConfigFile);
             }
         }
         #endregion
 
-        [DataMember] public DateTime LastSyncDate {
-            get { return lastSyncDate; }
-            set {
-                lastSyncDate = value;
-                if (!Loading()) XMLManager.ExportElement("LastSyncDate", value, ConfigFile);
-            }
-        }
         [DataMember] public Int32 CompletedSyncs {
             get { return completedSyncs; }
             set {
                 completedSyncs = value;
-                if (!Loading()) XMLManager.ExportElement("CompletedSyncs", value, ConfigFile);
+                if (!Loading()) XMLManager.ExportElement(this, "CompletedSyncs", value, ConfigFile);
             }
         }
         [DataMember] public bool VerboseOutput { get; set; }
@@ -289,11 +281,7 @@ namespace OutlookGoogleCalendarSync {
         }
 
         /// <summary>
-        /// The calendar settings profile currently displayed in the GUI.
-        /// </summary>
-        public SettingsStore.Calendar ActiveCalendarProfile;
-        /// <summary>
-        /// All profiles as defined in the settings configuration file.
+        /// Load all OGCS settings as defined in the configuration file.
         /// </summary>
         public static void Load(String XMLfile = null) {
             try {
@@ -379,9 +367,9 @@ namespace OutlookGoogleCalendarSync {
             }
             log.Info("  Obfuscate Words: " + Calendars[0].Obfuscation.Enabled);
             if (Calendars[0].Obfuscation.Enabled) {
-                if (Settings.Instance.ActiveCalendarProfile.Obfuscation.FindReplace.Count == 0) log.Info("    No regex defined.");
+                if (Forms.Main.Instance.ActiveCalendarProfile.Obfuscation.FindReplace.Count == 0) log.Info("    No regex defined.");
                 else {
-                    foreach (FindReplace findReplace in Settings.Instance.ActiveCalendarProfile.Obfuscation.FindReplace) {
+                    foreach (FindReplace findReplace in Forms.Main.Instance.ActiveCalendarProfile.Obfuscation.FindReplace) {
                         log.Info("    '" + findReplace.find + "' -> '" + findReplace.replace + "'");
                     }
                 }

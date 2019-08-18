@@ -67,7 +67,7 @@ namespace OutlookGoogleCalendarSync {
                 TimezoneDB.Instance.CheckForUpdate();
 
                 try {
-                    String startingTab = Settings.Instance.LastSyncDate == new DateTime(0) ? "Help" : null;
+                    String startingTab = Settings.Instance.CompletedSyncs == 0 ? "Help" : null;
                     Application.Run(new Forms.Main(startingTab));
                 } catch (ApplicationException ex) {
                     String reportError = ex.Message;
@@ -98,9 +98,7 @@ namespace OutlookGoogleCalendarSync {
                             ((Settings.Instance.StartupDelay == 0) ? "setting a" : "increasing the") + " delay for OGCS on startup.",
                             "Set a delay on startup", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
-                } else
-                    MessageBox.Show(aex.Message, "Application terminated!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-
+                }
                 log.Warn("Tidying down any remaining Outlook references, as OGCS crashed out.");
                 OutlookOgcs.Calendar.Disconnect();
             }

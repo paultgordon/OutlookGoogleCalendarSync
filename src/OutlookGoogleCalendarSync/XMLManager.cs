@@ -104,7 +104,7 @@ namespace OutlookGoogleCalendarSync {
             }
         }
         
-        public static void ExportElement(string nodeName, object nodeValue, string filename) {
+        public static void ExportElement(Object settingStore, String nodeName, object nodeValue, string filename) {
             XDocument xml = null;
             try {
                 xml = XDocument.Load(filename);
@@ -120,13 +120,25 @@ namespace OutlookGoogleCalendarSync {
                 OGCSexception.Analyse("Could not access 'Settings' element.", ex, true);
                 return;
             }
+            XElement xe = null;
+            XElement xeProfile = null;
             try {
-                XElement xe = settingsXE.Elements(ns + nodeName).First();
+                if (Settings.Instance.GetProfileType(settingStore) == Settings.ProfileType.Calendar) {
+                    //It's a Calendar setting
+                    SettingsStore.Calendar calSettings = settingStore as SettingsStore.Calendar;
+                    XElement xeCalendars = settingsXE.Elements(ns + "Calendars").First();
+                    List<XElement> xeCalendar = xeCalendars.Elements(ns + Settings.ProfileType.Calendar.ToString()).ToList();
+                    xeProfile = xeCalendar.First(c => c.Element(ns + "_ProfileName").Value == calSettings._ProfileName);
+                    xe = xeProfile.Elements(ns + nodeName).First();
+                } else if (settingStore is Settings) {
+                    //It's a "global" setting
+                    xe = settingsXE.Elements(ns + nodeName).First();
+                }
                 if (nodeValue == null && nodeName == "CloudLogging") { //Nullable Boolean node(s)
                     XNamespace i = "http://www.w3.org/2001/XMLSchema-instance";
                     xe.SetAttributeValue(i + "nil", "true"); //Add nullable attribute 'i:nil="true"'
                     xe.SetValue(String.Empty);
-                }  else {
+                } else {
                     xe.SetValue(nodeValue);
                     if (nodeValue is Boolean && nodeValue != null)
                         xe.RemoveAttributes(); //Remove nullable attribute 'i:nil="true"'
@@ -135,12 +147,15 @@ namespace OutlookGoogleCalendarSync {
                 log.Debug("Setting '" + nodeName + "' updated to '" + nodeValue + "'");
             } catch (System.Exception ex) {
                 if (OGCSexception.GetErrorCode(ex) == "0x80131509") { //Sequence contains no elements
-                    log.Debug("Adding Setting " + nodeName + " to settings.xml");
-                    settingsXE.Add(new XElement(ns + nodeName, nodeValue));
+                    log.Debug("Adding Setting " + nodeName + " for " + settingStore.ToString() + " to " + filename);
+                    if (xeProfile != null)
+                        xeProfile.Add(new XElement(ns + nodeName, nodeValue));
+                    else
+                        settingsXE.Add(new XElement(ns + nodeName, nodeValue));
                     xml.Root.Sort();
                     xml.Save(filename);
                 } else {
-                    OGCSexception.Analyse("Failed to export setting " + nodeName + "=" + nodeValue + " to " + filename + " file.", ex);
+                    OGCSexception.Analyse("Failed to export setting " + nodeName + "=" + nodeValue + " for " + settingStore.ToString() + " to " + filename + " file.", ex);
                 }
             }
         }
@@ -195,6 +210,12 @@ namespace OutlookGoogleCalendarSync {
                 target.Remove();
         }
 
+        /// <summary>
+        /// Fails silently if node to be moved does not exist.
+        /// </summary>
+        /// <param name="nodeName">Node to be moved</param>
+        /// <param name="parent">The parent of node being moved</param>
+        /// <param name="target">New parent</param>
         public static void MoveElement(String nodeName, XElement parent, XElement target) {
             try {
                 XElement sourceElement = getElement(nodeName, parent);
@@ -204,6 +225,5 @@ namespace OutlookGoogleCalendarSync {
                 OGCSexception.Analyse("Could not move '" + nodeName + "'", ex);
             }
         }
-
     }
 }

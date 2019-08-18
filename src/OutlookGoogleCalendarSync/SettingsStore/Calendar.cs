@@ -8,8 +8,19 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
     public class Calendar {
         private static readonly ILog log = LogManager.GetLogger(typeof(Calendar));
 
+        public Sync.SyncTimer OgcsTimer;
+        public Sync.PushSyncTimer OgcsPushTimer;
+
+        //Settings saved immediately
+        private DateTime lastSyncDate;
+
         public Calendar() {
             setDefaults();
+        }
+
+        public void InitialiseTimer() {
+            log.Debug("Creating the calendar timer for auto synchronisation on profile '" + this._ProfileName + "'");
+            OgcsTimer = new Sync.SyncTimer(this.LastSyncDate);
         }
 
         //Default values before loading from xml and attribute not yet serialized
@@ -67,6 +78,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             Obfuscation = new Obfuscate();
             
             ExtirpateOgcsMetadata = false;
+            lastSyncDate = new DateTime(0);
         }
 
         [DataMember] public string _ProfileName { get; set; }
@@ -136,13 +148,90 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         [DataMember] public Boolean ExtirpateOgcsMetadata { get; private set; }
         #endregion
 
+        [DataMember] public DateTime LastSyncDate {
+            get { return lastSyncDate; }
+            set {
+                lastSyncDate = value;
+                if (!Settings.Instance.Loading()) {
+                    XMLManager.ExportElement(this, "LastSyncDate", value, Settings.ConfigFile);
+                    Forms.Main.Instance.LastSyncVal = LastSyncDateText;
+                    this.OgcsTimer.LastSyncDate = lastSyncDate;
+                }
+            }
+        }
+
+        public String LastSyncDateText {
+            get { return lastSyncDate.ToLongDateString() + " @ " + lastSyncDate.ToLongTimeString(); }
+        }
+
         public void SetActive() {
-            if (Settings.Instance.ActiveCalendarProfile != null &&
-                Settings.Instance.ActiveCalendarProfile == this) return;
+            if (Forms.Main.Instance.ActiveCalendarProfile != null &&
+                Forms.Main.Instance.ActiveCalendarProfile == this) return;
 
             log.Debug("Changing active settings profile '" + this._ProfileName + "'.");
-            Settings.Instance.ActiveCalendarProfile = this;
-            Forms.Main.Instance.UpdateGUIsettings_Profile();
+            Forms.Main.Instance.ActiveCalendarProfile = this;
+        }
+
+        public void LogSettings() {
+            log.Info("CALENDAR SYNC SETTINGS");
+
+            log.Info("OUTLOOK SETTINGS:-");
+            log.Info("  Service: " + OutlookService.ToString());
+            if (OutlookService == OutlookOgcs.Calendar.Service.SharedCalendar) {
+                log.Info("  Shared Calendar: " + SharedCalendar);
+            } else {
+                log.Info("  Mailbox/FolderStore Name: " + MailboxName);
+            }
+            log.Info("  Calendar: " + (UseOutlookCalendar.Name == "Calendar" ? "Default " : "") + UseOutlookCalendar.Name);
+            log.Info("  Category Filter: " + CategoriesRestrictBy.ToString());
+            log.Info("  Categories: " + String.Join(",", Categories.ToArray()));
+            log.Info("  Only Responded Invites: " + OnlyRespondedInvites);
+            log.Info("  Filter String: " + OutlookDateFormat);
+            log.Info("  GAL Blocked: " + OutlookGalBlocked);
+
+            log.Info("GOOGLE SETTINGS:-");
+            log.Info("  Calendar: " + (UseGoogleCalendar == null ? "" : UseGoogleCalendar.ToString()));
+            log.Info("  API attendee limit in effect: " + Settings.Instance.APIlimit_inEffect);
+            log.Info("  API attendee limit last reached: " + Settings.Instance.APIlimit_lastHit);
+            log.Info("  Cloak Email: " + CloakEmail);
+
+            log.Info("SYNC OPTIONS:-");
+            log.Info(" How");
+            log.Info("  SyncDirection: " + SyncDirection.Name);
+            log.Info("  MergeItems: " + MergeItems);
+            log.Info("  DisableDelete: " + DisableDelete);
+            log.Info("  ConfirmOnDelete: " + ConfirmOnDelete);
+            log.Info("  SetEntriesPrivate: " + SetEntriesPrivate);
+            log.Info("  SetEntriesAvailable: " + SetEntriesAvailable);
+            log.Info("  SetEntriesColour: " + SetEntriesColour + (SetEntriesColour ? "; " + SetEntriesColourValue + "; \"" + SetEntriesColourName + "\"" : ""));
+            if ((SetEntriesPrivate || SetEntriesAvailable || SetEntriesColour) && SyncDirection == Sync.Direction.Bidirectional) {
+                log.Info("    TargetCalendar: " + TargetCalendar.Name);
+                log.Info("    CreatedItemsOnly: " + CreatedItemsOnly);
+            }
+            log.Info("  Obfuscate Words: " + Obfuscation.Enabled);
+            if (Obfuscation.Enabled) {
+                if (Forms.Main.Instance.ActiveCalendarProfile.Obfuscation.FindReplace.Count == 0) log.Info("    No regex defined.");
+                else {
+                    foreach (FindReplace findReplace in Forms.Main.Instance.ActiveCalendarProfile.Obfuscation.FindReplace) {
+                        log.Info("    '" + findReplace.find + "' -> '" + findReplace.replace + "'");
+                    }
+                }
+            }
+            log.Info(" When");
+            log.Info("  DaysInThePast: " + DaysInThePast);
+            log.Info("  DaysInTheFuture:" + DaysInTheFuture);
+            log.Info("  SyncInterval: " + SyncInterval);
+            log.Info("  SyncIntervalUnit: " + SyncIntervalUnit);
+            log.Info("  Push Changes: " + OutlookPush);
+            log.Info(" What");
+            log.Info("  AddLocation: " + AddLocation);
+            log.Info("  AddDescription: " + AddDescription + "; OnlyToGoogle: " + AddDescription_OnlyToGoogle);
+            log.Info("  AddAttendees: " + AddAttendees);
+            log.Info("  AddColours: " + AddColours);
+            log.Info("  AddReminders: " + AddReminders);
+            log.Info("    UseGoogleDefaultReminder: " + UseGoogleDefaultReminder);
+            log.Info("    UseOutlookDefaultReminder: " + UseOutlookDefaultReminder);
+            log.Info("    ReminderDND: " + ReminderDND + " (" + ReminderDNDstart.ToString("HH:mm") + "-" + ReminderDNDend.ToString("HH:mm") + ")");
         }
     }
 }

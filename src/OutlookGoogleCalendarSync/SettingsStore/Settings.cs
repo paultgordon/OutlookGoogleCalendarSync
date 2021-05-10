@@ -222,9 +222,10 @@ namespace OutlookGoogleCalendarSync {
             set {
                 cloudLogging = value;
                 GoogleOgcs.ErrorReporting.SetThreshold(value ?? false);
-                if (!Loading()) XMLManager.ExportElement("CloudLogging", value, ConfigFile);
-            }
+                if (value == null) GoogleOgcs.ErrorReporting.ErrorOccurred = false;
+                if (!Loading()) XMLManager.ExportElement("CloudLogging", value, ConfigFile);            }
         }
+        [DataMember] public bool TelemetryDisabled { get; set; }
         //Proxy
         [DataMember] public SettingsStore.Proxy Proxy { get; set; }
         [DataMember] public List<SettingsStore.Calendar> Calendars { get; set; }
@@ -314,7 +315,7 @@ namespace OutlookGoogleCalendarSync {
         }
 
         public static void ResetFile(String XMLfile = null) {
-            System.Windows.Forms.MessageBox.Show("Your OGCS settings appear to be corrupt and will have to be reset.",
+            System.Windows.Forms.OgcsMessageBox.Show("Your OGCS settings appear to be corrupt and will have to be reset.",
                     "Corrupt OGCS Settings", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Exclamation);
             log.Warn("Resetting settings.xml file to defaults.");
             System.IO.File.Delete(XMLfile ?? ConfigFile);

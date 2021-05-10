@@ -22,6 +22,7 @@ namespace OutlookGoogleCalendarSync {
         public static log4net.Core.Level MyUltraFineLevel = new log4net.Core.Level(24000, "ULTRA-FINE"); //Logs email addresses
 
         public static Boolean StartedWithFileArgs = false;
+        public static String Title { get; private set; }
         public static Boolean StartedWithSquirrelArgs {
             get {
                 String[] cliArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
@@ -59,6 +60,7 @@ namespace OutlookGoogleCalendarSync {
                 SettingsStore.Upgrade.Check();
                 log.Debug("Loading settings from file.");
                 Settings.Load();
+                Settings.Instance.Proxy.Configure();
 
                 Updater = new Updater();
                 isNewVersion(Program.IsInstalled);
@@ -119,11 +121,12 @@ namespace OutlookGoogleCalendarSync {
             StartedWithFileArgs = (args.Length != 0 && args.Count(a => a.StartsWith("/") && !a.StartsWith("/d")) != 0);
 
             if (args.Contains("/?") || args.Contains("/help", StringComparer.OrdinalIgnoreCase)) {
-                MessageBox.Show("Command line parameters:-\r\n" +
+                OgcsMessageBox.Show("Command line parameters:-\r\n" +
                     "  /?\t\tShow options\r\n" +
                     "  /l:OGcalsync.log\tFile to log to\r\n" +
                     "  /s:settings.xml\tSettings file to use.\r\n\t\tFile created with defaults if it doesn't exist\r\n" +
-                    "  /d:60\t\tSeconds startup delay",
+                    "  /d:60\t\tSeconds startup delay\r\n" +
+                    "  /t:\"Config A\"\tAppend custom text to application title",
                     "OGCS command line parameters", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 Environment.Exit(0);
             }
@@ -133,7 +136,7 @@ namespace OutlookGoogleCalendarSync {
 
             Dictionary<String, String> settingsArg = parseArgument(args, 's');
             Settings.InitialiseConfigFile(settingsArg["Filename"], settingsArg["Directory"]);
-
+            
             log.Info("Storing user files in directory: " + UserFilePath);
 
             //Before settings have been loaded, early config of cloud logging
@@ -175,6 +178,9 @@ namespace OutlookGoogleCalendarSync {
             }
             Dictionary<String, String> delayArg = parseArgument(args, 'd');
             if (delayArg["Value"] != null) delayStartup(delayArg["Value"]);
+
+            Dictionary<String, String> titleArg = parseArgument(args, 't');
+            Title = titleArg["Value"];
         }
 
         private static Dictionary<String, String> parseArgument(String[] args, char arg) {
@@ -290,7 +296,7 @@ namespace OutlookGoogleCalendarSync {
                 } catch (System.UnauthorizedAccessException ex) {
                     log.Warn("Could not create/update registry key. " + ex.Message);
                     Settings.Instance.StartOnStartup = false;
-                    if (MessageBox.Show("You don't have permission to update the registry, so the application can't be set to run on startup.\r\n" +
+                    if (OgcsMessageBox.Show("You don't have permission to update the registry, so the application can't be set to run on startup.\r\n" +
                         "Try manually adding a shortcut to the 'Startup' folder in Windows instead?", "Permission denied", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation)
                         == DialogResult.Yes) {
                         System.Diagnostics.Process.Start(System.Windows.Forms.Application.StartupPath);
@@ -457,7 +463,7 @@ namespace OutlookGoogleCalendarSync {
                     if ((settingsVersion == "Unknown" || upgradedFrom < 2050000) &&
                         !System.Windows.Forms.Application.ExecutablePath.ToString().StartsWith(expectedInstallDir)) {
                         log.Warn("OGCS is running from " + System.Windows.Forms.Application.ExecutablePath.ToString());
-                        MessageBox.Show("A suspected improper install location has been detected.\r\n" +
+                        OgcsMessageBox.Show("A suspected improper install location has been detected.\r\n" +
                             "Click 'OK' for further details.", "Improper Install Location",
                             MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         System.Diagnostics.Process.Start("https://github.com/phw198/OutlookGoogleCalendarSync/issues/265");

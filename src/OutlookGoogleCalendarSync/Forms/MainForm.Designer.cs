@@ -66,6 +66,7 @@
             this.ddProfile = new System.Windows.Forms.ComboBox();
             this.label34 = new System.Windows.Forms.Label();
             this.tabOutlook = new System.Windows.Forms.TabPage();
+            this.btCustomTzMap = new System.Windows.Forms.Button();
             this.cbOutlookCalendars = new System.Windows.Forms.ComboBox();
             this.lFilterCategories = new System.Windows.Forms.Label();
             this.cbCategoryFilter = new System.Windows.Forms.ComboBox();
@@ -144,8 +145,8 @@
             this.cbIntervalUnit = new System.Windows.Forms.ComboBox();
             this.tbInterval = new System.Windows.Forms.NumericUpDown();
             this.label1 = new System.Windows.Forms.Label();
-            this.tbDaysInTheFuture = new System.Windows.Forms.NumericUpDown();
-            this.tbDaysInThePast = new System.Windows.Forms.NumericUpDown();
+            this.tbDaysInTheFuture = new Extensions.OgcsNumericUpDown();
+            this.tbDaysInThePast = new Extensions.OgcsNumericUpDown();
             this.lDaysInFuture = new System.Windows.Forms.Label();
             this.lDaysInPast = new System.Windows.Forms.Label();
             this.lDateRange = new System.Windows.Forms.Label();
@@ -236,6 +237,7 @@
             this.lAboutMain = new System.Windows.Forms.Label();
             this.pbDonate = new System.Windows.Forms.PictureBox();
             this.GappBrowser = new System.Windows.Forms.WebBrowser();
+            this.pbDonate = new System.Windows.Forms.PictureBox();
             this.tabPage_Social = new System.Windows.Forms.TabPage();
             this.label33 = new System.Windows.Forms.Label();
             this.pbSocialDonate = new System.Windows.Forms.PictureBox();
@@ -253,6 +255,7 @@
             this.btSocialGitHub = new System.Windows.Forms.Button();
             this.btFbLike = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
+            this.pbSocialDonate = new System.Windows.Forms.PictureBox();
             this.trayIcon = new System.Windows.Forms.NotifyIcon(this.components);
             this.btProfileAction = new OutlookGoogleCalendarSync.Extensions.MenuButton();
             this.ddCategoryColour = new OutlookGoogleCalendarSync.Extensions.ColourPicker();
@@ -582,6 +585,7 @@
             // tabOutlook
             // 
             this.tabOutlook.BackColor = System.Drawing.Color.White;
+            this.tabOutlook.Controls.Add(this.btCustomTzMap);
             this.tabOutlook.Controls.Add(this.cbOutlookCalendars);
             this.tabOutlook.Controls.Add(this.lFilterCategories);
             this.tabOutlook.Controls.Add(this.cbCategoryFilter);
@@ -600,6 +604,16 @@
             this.tabOutlook.Size = new System.Drawing.Size(392, 462);
             this.tabOutlook.TabIndex = 0;
             this.tabOutlook.Text = "  Outlook";
+            // 
+            // btCustomTzMap
+            // 
+            this.btCustomTzMap.Location = new System.Drawing.Point(12, 264);
+            this.btCustomTzMap.Name = "btCustomTzMap";
+            this.btCustomTzMap.Size = new System.Drawing.Size(189, 23);
+            this.btCustomTzMap.TabIndex = 46;
+            this.btCustomTzMap.Text = "Custom Timezone Mapping";
+            this.btCustomTzMap.UseVisualStyleBackColor = true;
+            this.btCustomTzMap.Click += new System.EventHandler(this.btCustomTzMap_Click);
             // 
             // cbOutlookCalendars
             // 
@@ -995,6 +1009,7 @@
             this.tbClientSecret.UseSystemPasswordChar = true;
             this.tbClientSecret.Visible = false;
             this.tbClientSecret.TextChanged += new System.EventHandler(this.tbClientSecret_TextChanged);
+            this.tbClientSecret.Leave += new System.EventHandler(this.personalApiKey_Leave);
             // 
             // tbClientID
             // 
@@ -1007,6 +1022,7 @@
             this.tbClientID.TabIndex = 2;
             this.tbClientID.Visible = false;
             this.tbClientID.TextChanged += new System.EventHandler(this.tbClientID_TextChanged);
+            this.tbClientID.Leave += new System.EventHandler(this.personalApiKey_Leave);
             // 
             // lClientID
             // 
@@ -2697,8 +2713,8 @@
             this.tabPage_About.Controls.Add(this.label28);
             this.tabPage_About.Controls.Add(this.lAboutURL);
             this.tabPage_About.Controls.Add(this.lAboutMain);
-            this.tabPage_About.Controls.Add(this.pbDonate);
             this.tabPage_About.Controls.Add(this.GappBrowser);
+            this.tabPage_About.Controls.Add(this.pbDonate);
             this.tabPage_About.Location = new System.Drawing.Point(4, 22);
             this.tabPage_About.Name = "tabPage_About";
             this.tabPage_About.Padding = new System.Windows.Forms.Padding(3);
@@ -2820,6 +2836,16 @@
             this.lAboutMain.Text = resources.GetString("lAboutMain.Text");
             this.lAboutMain.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // GappBrowser
+            // 
+            this.GappBrowser.Location = new System.Drawing.Point(30, 207);
+            this.GappBrowser.MinimumSize = new System.Drawing.Size(20, 20);
+            this.GappBrowser.Name = "GappBrowser";
+            this.GappBrowser.ScriptErrorsSuppressed = true;
+            this.GappBrowser.Size = new System.Drawing.Size(250, 51);
+            this.GappBrowser.TabIndex = 45;
+            this.GappBrowser.Visible = false;
+            // 
             // pbDonate
             // 
             this.pbDonate.Anchor = System.Windows.Forms.AnchorStyles.Top;
@@ -2832,23 +2858,13 @@
             this.pbDonate.TabStop = false;
             this.pbDonate.Click += new System.EventHandler(this.pbDonate_Click);
             // 
-            // GappBrowser
-            // 
-            this.GappBrowser.Location = new System.Drawing.Point(30, 207);
-            this.GappBrowser.MinimumSize = new System.Drawing.Size(20, 20);
-            this.GappBrowser.Name = "GappBrowser";
-            this.GappBrowser.ScriptErrorsSuppressed = true;
-            this.GappBrowser.Size = new System.Drawing.Size(250, 51);
-            this.GappBrowser.TabIndex = 45;
-            this.GappBrowser.Visible = false;
-            // 
             // tabPage_Social
             // 
             this.tabPage_Social.BackColor = System.Drawing.Color.White;
             this.tabPage_Social.Controls.Add(this.label33);
-            this.tabPage_Social.Controls.Add(this.pbSocialDonate);
             this.tabPage_Social.Controls.Add(this.tableLayoutPanel2);
             this.tabPage_Social.Controls.Add(this.label2);
+            this.tabPage_Social.Controls.Add(this.pbSocialDonate);
             this.tabPage_Social.Location = new System.Drawing.Point(4, 22);
             this.tabPage_Social.Name = "tabPage_Social";
             this.tabPage_Social.Size = new System.Drawing.Size(487, 542);
@@ -2866,18 +2882,6 @@
             this.label33.Size = new System.Drawing.Size(177, 13);
             this.label33.TabIndex = 47;
             this.label33.Text = "£10 or more hides the splash screen";
-            // 
-            // pbSocialDonate
-            // 
-            this.pbSocialDonate.Anchor = System.Windows.Forms.AnchorStyles.Top;
-            this.pbSocialDonate.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.pbSocialDonate.Image = global::OutlookGoogleCalendarSync.Properties.Resources.paypalDonate;
-            this.pbSocialDonate.Location = new System.Drawing.Point(206, 45);
-            this.pbSocialDonate.Name = "pbSocialDonate";
-            this.pbSocialDonate.Size = new System.Drawing.Size(75, 23);
-            this.pbSocialDonate.TabIndex = 40;
-            this.pbSocialDonate.TabStop = false;
-            this.pbSocialDonate.Click += new System.EventHandler(this.pbDonate_Click);
             // 
             // tableLayoutPanel2
             // 
@@ -2917,6 +2921,7 @@
             this.lMilestoneBlurb.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lMilestoneBlurb.AutoSize = true;
             this.lMilestoneBlurb.Location = new System.Drawing.Point(103, 5);
+            this.lMilestoneBlurb.MaximumSize = new System.Drawing.Size(169, 39);
             this.lMilestoneBlurb.Name = "lMilestoneBlurb";
             this.lMilestoneBlurb.Size = new System.Drawing.Size(174, 39);
             this.lMilestoneBlurb.TabIndex = 41;
@@ -3094,6 +3099,18 @@
             this.label2.Text = "Get Social && Spread The Word!";
             this.label2.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
+            // pbSocialDonate
+            // 
+            this.pbSocialDonate.Anchor = System.Windows.Forms.AnchorStyles.Top;
+            this.pbSocialDonate.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.pbSocialDonate.Image = global::OutlookGoogleCalendarSync.Properties.Resources.paypalDonate;
+            this.pbSocialDonate.Location = new System.Drawing.Point(206, 45);
+            this.pbSocialDonate.Name = "pbSocialDonate";
+            this.pbSocialDonate.Size = new System.Drawing.Size(75, 23);
+            this.pbSocialDonate.TabIndex = 40;
+            this.pbSocialDonate.TabStop = false;
+            this.pbSocialDonate.Click += new System.EventHandler(this.pbDonate_Click);
+            // 
             // trayIcon
             // 
             this.trayIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("trayIcon.Icon")));
@@ -3110,21 +3127,6 @@
             this.btProfileAction.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btProfileAction.UseVisualStyleBackColor = true;
             this.btProfileAction.Click += new System.EventHandler(this.btProfileAction_Click);
-            // 
-            // ddCategoryColour
-            // 
-            this.ddCategoryColour.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.ddCategoryColour.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
-            this.ddCategoryColour.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.ddCategoryColour.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ddCategoryColour.FormattingEnabled = true;
-            this.ddCategoryColour.Location = new System.Drawing.Point(178, 58);
-            this.ddCategoryColour.Name = "ddCategoryColour";
-            this.ddCategoryColour.SelectedItem = null;
-            this.ddCategoryColour.Size = new System.Drawing.Size(158, 21);
-            this.ddCategoryColour.TabIndex = 43;
-            this.ddCategoryColour.SelectedIndexChanged += new System.EventHandler(this.ddCategoryColour_SelectedIndexChanged);
             // 
             // Main
             // 
@@ -3273,8 +3275,8 @@
         private System.Windows.Forms.GroupBox gbSyncOptions_When;
         private System.Windows.Forms.CheckBox cbOutlookPush;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.NumericUpDown tbDaysInTheFuture;
-        private System.Windows.Forms.NumericUpDown tbDaysInThePast;
+        private Extensions.OgcsNumericUpDown tbDaysInTheFuture;
+        private Extensions.OgcsNumericUpDown tbDaysInThePast;
         private System.Windows.Forms.Label lDaysInFuture;
         private System.Windows.Forms.Label lDaysInPast;
         private System.Windows.Forms.Label lDateRange;
@@ -3414,6 +3416,7 @@
         private System.Windows.Forms.Button btSocialGitHub;
         private System.Windows.Forms.Button btFbLike;
         private System.Windows.Forms.CheckBox cbTelemetryDisabled;
+        public System.Windows.Forms.Button btCustomTzMap;
         private System.Windows.Forms.TabPage tabProfile;
         public System.Windows.Forms.ComboBox ddProfile;
         private System.Windows.Forms.Label label34;

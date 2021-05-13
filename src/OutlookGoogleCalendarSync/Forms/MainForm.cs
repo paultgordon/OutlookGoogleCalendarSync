@@ -305,7 +305,18 @@ namespace OutlookGoogleCalendarSync.Forms {
                     }
                     c++;
                 }
-                if (cbOutlookCalendars.SelectedIndex == -1) cbOutlookCalendars.SelectedIndex = 0;
+            if (cbOutlookCalendars.SelectedIndex == -1) {
+                if (!string.IsNullOrEmpty(Settings.Instance.UseOutlookCalendar.Id)) {
+                    log.Warn("Outlook calendar '" + Settings.Instance.UseOutlookCalendar.Name + "' could no longer be found. Selected calendar '" + OutlookOgcs.Calendar.Instance.CalendarFolders.First().Key + "' instead.");
+                    OgcsMessageBox.Show("The Outlook calendar '" + Settings.Instance.UseOutlookCalendar.Name + "' previously configured for syncing is no longer available.\r\n\r\n" +
+                        "'" + OutlookOgcs.Calendar.Instance.CalendarFolders.First().Key + "' calendar has been selected instead and any automated syncs have been temporarily disabled.",
+                        "Outlook Calendar Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                    Settings.Instance.ActiveCalendarProfile.SyncInterval = 0;
+                    Settings.Instance.ActiveCalendarProfile.OutlookPush = false;
+                    Forms.Main.Instance.tabApp.SelectTab("tabPage_Settings");
+                }
+                cbOutlookCalendars.SelectedIndex = 0;
+            }
                 #endregion
                 #region Categories
                 cbCategoryFilter.SelectedItem = profile.CategoriesRestrictBy == SettingsStore.Calendar.RestrictBy.Include ?
@@ -321,6 +332,7 @@ namespace OutlookGoogleCalendarSync.Forms {
                 }
                 #endregion
                 cbOnlyRespondedInvites.Checked = profile.OnlyRespondedInvites;
+                btCustomTzMap.Visible = Settings.Instance.TimezoneMaps.Count != 0;
                 #region DateTime Format / Locale
                 Dictionary<string, string> customDates = new Dictionary<string, string>();
                 customDates.Add("Default", "g");
@@ -432,10 +444,7 @@ namespace OutlookGoogleCalendarSync.Forms {
                 this.gbSyncOptions_When.SuspendLayout();
                 tbDaysInThePast.Text = profile.DaysInThePast.ToString();
                 tbDaysInTheFuture.Text = profile.DaysInTheFuture.ToString();
-                if (Settings.Instance.UsingPersonalAPIkeys()) {
-                    tbDaysInTheFuture.Maximum = 365 * 10;
-                    tbDaysInThePast.Maximum = 365 * 10;
-                }
+                setMaxSyncRange();
                 tbInterval.ValueChanged -= new System.EventHandler(this.tbMinuteOffsets_ValueChanged);
                 tbInterval.Value = profile.SyncInterval;
                 tbInterval.ValueChanged += new System.EventHandler(this.tbMinuteOffsets_ValueChanged);
@@ -1046,6 +1055,10 @@ namespace OutlookGoogleCalendarSync.Forms {
             Settings.Instance.ActiveCalendarProfile.OnlyRespondedInvites = cbOnlyRespondedInvites.Checked;
         }
 
+        private void btCustomTzMap_Click(object sender, EventArgs e) {
+            new Forms.TimezoneMap().ShowDialog(this);
+        }
+
         #region Datetime Format
         private void cbOutlookDateFormat_SelectedIndexChanged(object sender, EventArgs e) {
             KeyValuePair<string, string> selectedFormat = (KeyValuePair<string, string>)cbOutlookDateFormat.SelectedItem;
@@ -1199,13 +1212,26 @@ namespace OutlookGoogleCalendarSync.Forms {
         private void tbClientID_TextChanged(object sender, EventArgs e) {
             Settings.Instance.PersonalClientIdentifier = tbClientID.Text;
         }
-
         private void tbClientSecret_TextChanged(object sender, EventArgs e) {
             Settings.Instance.PersonalClientSecret = tbClientSecret.Text;
             cbShowClientSecret.Enabled = (tbClientSecret.Text != "");
         }
+        private void personalApiKey_Leave(object sender, EventArgs e) {
+            setMaxSyncRange();
+        }
+
         private void cbShowClientSecret_CheckedChanged(object sender, EventArgs e) {
             tbClientSecret.UseSystemPasswordChar = !cbShowClientSecret.Checked;
+        }
+
+        private void setMaxSyncRange() {
+            if (Settings.Instance.UsingPersonalAPIkeys()) {
+                tbDaysInTheFuture.Maximum = Int32.MaxValue;
+                tbDaysInThePast.Maximum = Int32.MaxValue;
+            } else {
+                tbDaysInTheFuture.Maximum = 365;
+                tbDaysInThePast.Maximum = 365;
+            }
         }
         #endregion
         #endregion
@@ -1263,7 +1289,7 @@ namespace OutlookGoogleCalendarSync.Forms {
                 if (tbTargetCalendar.Items.Contains("target calendar"))
                     tbTargetCalendar.Items.Remove("target calendar");
                 tbTargetCalendar.SelectedIndex = 0;
-                tbTargetCalendar.Enabled = cbPrivate.Checked || cbAvailable.Checked || cbColour.Checked;
+                tbTargetCalendar.Enabled = true;
             } else {
                 cbObfuscateDirection.Enabled = false;
                 cbObfuscateDirection.SelectedIndex = Settings.Instance.ActiveCalendarProfile.SyncDirection.Id - 1;
@@ -1372,18 +1398,15 @@ namespace OutlookGoogleCalendarSync.Forms {
 
         private void cbPrivate_CheckedChanged(object sender, EventArgs e) {
             Settings.Instance.ActiveCalendarProfile.SetEntriesPrivate = cbPrivate.Checked;
-            tbTargetCalendar.Enabled = cbPrivate.Checked && Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional;
         }
 
         private void cbAvailable_CheckedChanged(object sender, EventArgs e) {
             Settings.Instance.ActiveCalendarProfile.SetEntriesAvailable = cbAvailable.Checked;
-            tbTargetCalendar.Enabled = cbAvailable.Checked && Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional;
         }
 
         private void cbColour_CheckedChanged(object sender, EventArgs e) {
             Settings.Instance.ActiveCalendarProfile.SetEntriesColour = cbColour.Checked;
             ddCategoryColour.Enabled = cbColour.Checked;
-            tbTargetCalendar.Enabled = cbColour.Checked && Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional;
         }
 
         private void ddCategoryColour_SelectedIndexChanged(object sender, EventArgs e) {
@@ -1421,17 +1444,11 @@ namespace OutlookGoogleCalendarSync.Forms {
 
         private void tbDaysInThePast_ValueChanged(object sender, EventArgs e) {
             Settings.Instance.ActiveCalendarProfile.DaysInThePast = (int)tbDaysInThePast.Value;
-            if (this.Visible && !Settings.Instance.UsingPersonalAPIkeys() && tbDaysInThePast.Value == tbDaysInThePast.Maximum) {
-                this.ToolTips.Show("Limited to 1 year unless personal API keys are used. See 'Developer Options' on Google tab.", tbDaysInThePast);
             }
-        }
 
         private void tbDaysInTheFuture_ValueChanged(object sender, EventArgs e) {
             Settings.Instance.ActiveCalendarProfile.DaysInTheFuture = (int)tbDaysInTheFuture.Value;
-            if (this.Visible && !Settings.Instance.UsingPersonalAPIkeys() && tbDaysInTheFuture.Value == tbDaysInTheFuture.Maximum) {
-                this.ToolTips.Show("Limited to 1 year unless personal API keys are used. See 'Developer Options' on Google tab.", tbDaysInTheFuture);
             }
-        }
 
         private void tbMinuteOffsets_ValueChanged(object sender, EventArgs e) {
             if (!Settings.Instance.UsingPersonalAPIkeys()) {

@@ -572,7 +572,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             String aiSummary = OutlookOgcs.Calendar.GetEventSummary(ai);
             log.Debug("Processing >> " + aiSummary);
 
-            if (!(ev.Creator.Self ?? false) && ev.Recurrence != null) {
+            if (!(ev.Creator.Self ?? (ev.Creator.Email == Settings.Instance.GaccountEmail)) && ev.Recurrence != null) {
                 log.Debug("Not being the recurring Event owner, comparison for update is futile - changes won't take effect/fail.");
                 log.Fine("Owner: " + ev.Creator.Email);
                 return ev;
@@ -593,6 +593,10 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 if (Sync.Engine.CompareAttribute("End time", Sync.Direction.OutlookToGoogle, evEnd, ai.End.Date, sb, ref itemModified)) {
                     ev.End.Date = ai.End.ToString("yyyy-MM-dd");
                 }
+                //If there was no change in the start/end time, make sure we still have dates populated
+                if (ev.Start.Date == null) ev.Start.Date = ai.Start.ToString("yyyy-MM-dd");
+                if (ev.End.Date == null) ev.End.Date = ai.End.ToString("yyyy-MM-dd");
+
             } else {
                 //Handle: Google = all-day; Outlook = not all day, but midnight values (so effectively all day!)
                 if (ev.Start.DateTime == null && evStart == ai.Start && evEnd == ai.End) {
@@ -609,6 +613,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 if (Sync.Engine.CompareAttribute("End time", Sync.Direction.OutlookToGoogle, evEnd, ai.End, sb, ref itemModified)) {
                     ev.End.DateTime = ai.End;
                 }
+                //If there was no change in the start/end time, make sure we still have dates populated
+                if (ev.Start.DateTime == null) ev.Start.DateTime = ai.Start;
+                if (ev.End.DateTime == null) ev.End.DateTime = ai.End;
             }
 
             List<String> oRrules = Recurrence.Instance.BuildGooglePattern(ai, ev);
@@ -636,7 +643,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 }
             } else {
                 if (oRrules != null && ev.RecurringEventId == null) {
-                    if (!(ev.Creator.Self ?? false)) {
+                    if (!(ev.Creator.Self ?? (ev.Creator.Email == Settings.Instance.GaccountEmail))) {
                         log.Warn("Cannot convert Event organised by another to a recurring series.");
                     } else {
                     log.Debug("Converting to recurring event.");
@@ -687,10 +694,12 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 ev.Transparency = oFreeBusy;
             }
 
-            Palette gColour = this.ColourPalette.GetColour(ev.ColorId);
-            Palette oColour = getColour(ai.Categories, gColour);
-            if (Sync.Engine.CompareAttribute("Colour", Sync.Direction.OutlookToGoogle, gColour.HexValue, oColour.HexValue, sb, ref itemModified)) {
-                ev.ColorId = oColour.Id;
+            if (Settings.Instance.ActiveCalendarProfile.AddColours || Settings.Instance.ActiveCalendarProfile.SetEntriesColour) {
+                Palette gColour = this.ColourPalette.GetColour(ev.ColorId);
+                Palette oColour = getColour(ai.Categories, gColour);
+                if (Sync.Engine.CompareAttribute("Colour", Sync.Direction.OutlookToGoogle, gColour.HexValue, oColour.HexValue, sb, ref itemModified)) {
+                    ev.ColorId = oColour.Id;
+                }
             }
 
             if (Settings.Instance.ActiveCalendarProfile.AddAttendees && ai.Recipients.Count > 1 && !APIlimitReached_attendee) {
@@ -874,7 +883,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             Boolean doDelete = true;
 
             if (Settings.Instance.ActiveCalendarProfile.ConfirmOnDelete) {
-                if (OgcsMessageBox.Show("Delete " + eventSummary + "?", "Deletion Confirmation",
+                if (OgcsMessageBox.Show("Delete " + eventSummary + "?", "Confirm Deletion From Google",
                     MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No) {
                     doDelete = false;
                     Forms.Main.Instance.Console.Update("Not deleted: " + eventSummary, Console.Markup.calendar);
@@ -1315,10 +1324,10 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             if (!Settings.Instance.ActiveCalendarProfile.SetEntriesPrivate)
                 return (oSensitivity == OlSensitivity.olNormal) ? "default" : "private";
 
-            if (Settings.Instance.ActiveCalendarProfile.SyncDirection != Sync.Direction.Bidirectional) {
+            if (Settings.Instance.ActiveCalendarProfile.SyncDirection.Id != Sync.Direction.Bidirectional.Id) {
                 return "private";
             } else {
-                if (Settings.Instance.ActiveCalendarProfile.TargetCalendar == Sync.Direction.GoogleToOutlook) { //Privacy enforcement is in other direction
+                if (Settings.Instance.ActiveCalendarProfile.TargetCalendar.Id == Sync.Direction.GoogleToOutlook.Id) { //Privacy enforcement is in other direction
                     if (gVisibility == null)
                         return (oSensitivity == OlSensitivity.olNormal) ? "default" : "private";
                     else if (gVisibility == "private" && oSensitivity != OlSensitivity.olPrivate) {
@@ -1344,10 +1353,10 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             if (!Settings.Instance.ActiveCalendarProfile.SetEntriesAvailable)
                 return (oBusyStatus == OlBusyStatus.olFree) ? "transparent" : "opaque";
 
-            if (Settings.Instance.ActiveCalendarProfile.SyncDirection != Sync.Direction.Bidirectional) {
+            if (Settings.Instance.ActiveCalendarProfile.SyncDirection.Id != Sync.Direction.Bidirectional.Id) {
                 return "transparent";
             } else {
-                if (Settings.Instance.ActiveCalendarProfile.TargetCalendar == Sync.Direction.GoogleToOutlook) { //Availability enforcement is in other direction
+                if (Settings.Instance.ActiveCalendarProfile.TargetCalendar.Id == Sync.Direction.GoogleToOutlook.Id) { //Availability enforcement is in other direction
                     if (gTransparency == null)
                         return (oBusyStatus == OlBusyStatus.olFree) ? "transparent" : "opaque";
                     else if (gTransparency == "transparent" && oBusyStatus != OlBusyStatus.olFree) {
@@ -1375,7 +1384,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             OlCategoryColor? categoryColour = null;
 
             if (Settings.Instance.ActiveCalendarProfile.SetEntriesColour) {
-                if (Settings.Instance.ActiveCalendarProfile.TargetCalendar == Sync.Direction.GoogleToOutlook) { //Colour forced to sync in other direction
+                if (Settings.Instance.ActiveCalendarProfile.TargetCalendar.Id == Sync.Direction.GoogleToOutlook.Id) { //Colour forced to sync in other direction
                     if (gColour == null) //Creating item
                         getOutlookCategoryColour(aiCategories, ref categoryColour);
                     else return gColour;
@@ -1390,7 +1399,8 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             } else {
                 getOutlookCategoryColour(aiCategories, ref categoryColour);
             }
-            if (categoryColour == null) return Palette.NullPalette;
+            if (categoryColour == null || categoryColour == OlCategoryColor.olCategoryColorNone)
+                return Palette.NullPalette;
             else {
                 System.Drawing.Color color = OutlookOgcs.CategoryMap.RgbColour((OlCategoryColor)categoryColour);
                 Palette closest = ColourPalette.GetClosestColour(color);
@@ -1454,13 +1464,27 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
 
             log.Debug("CSV export: " + action);
 
-            TextWriter tw;
+            String fullFilename = Path.Combine(Program.UserFilePath, filename);
             try {
-                tw = new StreamWriter(Path.Combine(Program.UserFilePath, filename));
+                if (File.Exists(fullFilename)) {
+                    String backupFilename = Path.Combine(Program.UserFilePath, Path.GetFileNameWithoutExtension(filename) + "-prev") + Path.GetExtension(filename);
+                    if (File.Exists(backupFilename)) File.Delete(backupFilename);
+                    File.Move(fullFilename, backupFilename);
+                    log.Debug("Previous export renamed to " + backupFilename);
+                }
             } catch (System.Exception ex) {
+                OGCSexception.Analyse("Failed to backup previous CSV file.", ex);
+            }
+
+            Stream stream = null;
+            TextWriter tw = null;
+            try {
+                try {
+                    stream = new FileStream(Path.Combine(Program.UserFilePath, filename), FileMode.Create, FileAccess.Write);
+                    tw = new StreamWriter(stream, Encoding.UTF8);
+                } catch (System.Exception ex) {
                 Forms.Main.Instance.Console.Update("Failed to create CSV file '" + filename + "'.", Console.Markup.error);
-                log.Error("Error opening file '" + filename + "' for writing.");
-                log.Error(ex.Message);
+                    OGCSexception.Analyse("Error opening file '" + filename + "' for writing.", ex);
                 return;
             }
             try {
@@ -1477,14 +1501,16 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                         tw.WriteLine(exportToCSV(ev));
                     } catch (System.Exception ex) {
                         Forms.Main.Instance.Console.Update("Failed to output following Google event to CSV:-<br/>" + GetEventSummary(ev), Console.Markup.warning);
-                        OGCSexception.Analyse(ex);
+                            OGCSexception.Analyse(ex, true);
                     }
                 }
             } catch (System.Exception ex) {
                 Forms.Main.Instance.Console.Update("Failed to output Google events to CSV.", Console.Markup.error);
                 OGCSexception.Analyse(ex);
+                }
             } finally {
                 if (tw != null) tw.Close();
+                if (stream != null) stream.Close();
             }
             log.Fine("CSV export done.");
         }

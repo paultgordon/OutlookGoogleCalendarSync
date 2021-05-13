@@ -134,8 +134,13 @@ namespace OutlookGoogleCalendarSync {
                     log.Warn("Outlook can't handle end dates this far in the future. Converting to no end date.");
                     oPattern.NoEndDate = true;
                 } else {
-                    DateTime endDate = DateTime.ParseExact(ruleBook["UNTIL"], "yyyyMMddTHHmmssZ", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal);
-                    endDate = endDate.AddHours(TimezoneDB.GetUtcOffset(ev.End.TimeZone)).Date;
+                    DateTime endDate;
+                    if (ruleBook["UNTIL"].Length == 8 && !ruleBook["UNTIL"].EndsWith("Z"))
+                        endDate = DateTime.ParseExact(ruleBook["UNTIL"], "yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture).Date;
+                    else {
+                        endDate = DateTime.ParseExact(ruleBook["UNTIL"], "yyyyMMddTHHmmssZ", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal);
+                        endDate = endDate.AddHours(TimezoneDB.GetUtcOffset(ev.End.TimeZone)).Date;
+                    }
                     if (endDate < oPattern.PatternStartDate) {
                     log.Debug("PatternStartDate: " + oPattern.PatternStartDate.ToString("yyyyMMddHHmmss"));
                         log.Debug("PatternEndDate:   " + ruleBook["UNTIL"].ToString());
@@ -604,8 +609,9 @@ namespace OutlookGoogleCalendarSync {
                                             log.Warn("Outlook is NOT deleted though - a mismatch has occurred somehow!");
                                             String syncDirectionTip = (Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional) ? "<br/><i>Ensure you <b>first</b> set OGCS to one-way sync O->G.</i>" : "";
                                             Forms.Main.Instance.Console.Update(OutlookOgcs.Calendar.GetEventSummary(ai) + "<br/>" +
-                                                "The occurrence on " + oExcp.OriginalDate.ToShortDateString() + " does not exist in Google, but does in Outlook. " +
-                                                "The suggested fix is to delete the entire series in Google and let OGCS recreate it." + syncDirectionTip, Console.Markup.warning);
+                                                "The occurrence on " + oExcp.OriginalDate.ToShortDateString() + " does not exist in Google, but does in Outlook.<br/>" +
+                                                "This can happen if, for example, you declined the occurrence (which is synced to Google) and proposed a new time that is subsequently accepted by the organiser.<br/>" +
+                                                "<u>Suggested fix</u>: delete the entire series in Google and let OGCS recreate it." + syncDirectionTip, Console.Markup.warning);
                                         }
                                         continue;
                                     } else if (oIsDeleted && gExcp.Status != "cancelled") {

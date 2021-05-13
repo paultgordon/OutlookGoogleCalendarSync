@@ -220,8 +220,6 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         delay++;
                     }
                 }
-                if (Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked) log.Debug("GAL is no longer blocked!");
-                Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked = false;
 
                 //Issue 402
                 log.Debug("Getting active window inspector");
@@ -229,8 +227,21 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 inspector = (Inspector)OutlookOgcs.Calendar.ReleaseObject(inspector);
                 log.Debug("Done.");
 
-                currentUserSMTP = GetRecipientEmail(currentUser);
-                currentUserName = currentUser.Name;
+                try {
+                    currentUserSMTP = GetRecipientEmail(currentUser);
+                    currentUserName = currentUser.Name;
+                } catch (System.Exception ex) {
+                    if (OGCSexception.GetErrorCode(ex) == "0x80004004") { //E_ABORT
+                        log.Warn("Corporate policy or possibly anti-virus is blocking access to GAL.");
+                    } else OGCSexception.Analyse(ex);
+                    log.Warn("OGCS is unable to interogate CurrentUser from Outlook.");
+                    Settings.Instance.OutlookGalBlocked = true;
+                    return oNS;
+                }
+                if (Settings.Instance.OutlookGalBlocked) {
+                    log.Debug("GAL is no longer blocked!");
+                    Settings.Instance.OutlookGalBlocked = false;
+                }
             } finally {
                 currentUser = (Recipient)OutlookOgcs.Calendar.ReleaseObject(currentUser);
                 if (releaseNamespace) oNS = (NameSpace)OutlookOgcs.Calendar.ReleaseObject(oNS);
@@ -247,11 +258,35 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 PropertyAccessor pa = null;
                 try {
                     binFolders = oNS.Folders;
-                    binStore = binFolders[Settings.Instance.ActiveCalendarProfile.MailboxName].Store;
+                    log.Fine("Checking mailbox name is still accessible.");
+                    Boolean folderExists = false;
+                    foreach(MAPIFolder fld in binFolders) {
+                        if (fld.Name == Settings.Instance.MailboxName) {
+                            folderExists = true;
+                            break;
+                        }
+                    }
+                    if (folderExists) {
+                        binStore = binFolders[Settings.Instance.ActiveCalendarProfile.MailboxName].Store;
+                    } else {
+                        binStore = binFolders.GetFirst().Store;
+                        log.Warn("Alternate mailbox '" + Settings.Instance.MailboxName + "' could no longer be found. Selected mailbox '" + binStore.DisplayName + "' instead.");
+                        OgcsMessageBox.Show("The alternate mailbox '" + Settings.Instance.MailboxName + "' previously configured for syncing is no longer available.\r\n\r\n" +
+                            "'" + binStore.DisplayName + "' mailbox has been selected instead and any automated syncs have been temporarily disabled.",
+                            "Mailbox Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                        Settings.Instance.MailboxName = binStore.DisplayName;
+                        Settings.Instance.ActiveCalendarProfile.SyncInterval = 0;
+                        Settings.Instance.ActiveCalendarProfile.OutlookPush = false;
+                        Forms.Main.Instance.tabApp.SelectTab("tabPage_Settings");
+                    }
                     pa = binStore.PropertyAccessor;
+                    string excludeDeletedFolder = "FOLDER-DOES-NOT-EXIST";
+                    try {
                     object bin = pa.GetProperty(PR_IPM_WASTEBASKET_ENTRYID);
-                    string excludeDeletedFolder = pa.BinaryToString(bin); //EntryID
-
+                        excludeDeletedFolder = pa.BinaryToString(bin); //EntryID
+                    } catch (System.Exception ex) {
+                        OGCSexception.Analyse("Could not access 'Deleted Items' folder property.", OGCSexception.LogAsFail(ex));
+                    }
                     Forms.Main.Instance.lOutlookCalendar.Text = "Getting calendars";
                     Forms.Main.Instance.lOutlookCalendar.BackColor = System.Drawing.Color.Yellow;
                     findCalendars(oNS.Folders[Settings.Instance.ActiveCalendarProfile.MailboxName].Folders, calendarFolders, excludeDeletedFolder);
@@ -260,7 +295,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 } catch (System.Exception ex) {
                     OGCSexception.Analyse("Failed to find calendar folders in alternate mailbox '" + Settings.Instance.ActiveCalendarProfile.MailboxName + "'.", ex, true);
                     if (!(Forms.Main.Instance.Visible && Forms.Main.Instance.ActiveControl.Name == "rbOutlookAltMB"))
-                        throw new System.Exception("Failed to access alternate mailbox calendar.", ex);
+                        throw new System.Exception("Failed to access alternate mailbox calendar '" + Settings.Instance.MailboxName + "'", ex);
                 } finally {
                     pa = (PropertyAccessor)OutlookOgcs.Calendar.ReleaseObject(pa);
                     binStore = (Store)OutlookOgcs.Calendar.ReleaseObject(binStore);
@@ -760,6 +795,11 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 TimeZoneInfo tzi = sysTZ.FirstOrDefault(t => t.DisplayName == tzDescription|| t.StandardName == tzDescription || t.Id == tzDescription);
                 if (tzi != null) return tzi;
 
+                //Next see if we already have a custom mapping by the user
+                tzi = Forms.TimezoneMap.GetSystemTimezone(tzDescription, sysTZ);
+                if (tzi != null) return tzi;
+
+                //Finally, fuzzy logic
                 log.Warn("Could not find timezone ID based on given description. Attempting some fuzzy logic...");
                 if (tzDescription.StartsWith("(GMT")) {
                     log.Fine("Replace GMT with UTC");
@@ -773,8 +813,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     if (tzi != null) return tzi;
                 }
 
-
-                //Try searching just by timezone offset. This would at least get the right time for the appointment, eg if the tzDescription doesn't match
+                //Try searching just by timezone offset. This would at least get the right time for the appointment (notwithstanding DST!), eg if the tzDescription doesn't match
                 //because they it is in a different language that the user's system data.
                 Int16? offset = null;
                 offset = TimezoneDB.GetTimezoneOffset(tzDescription);
@@ -788,16 +827,22 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         String tzCountry = tzDescription.Substring(tzDescription.LastIndexOf("/") + 1);
                         if (string.IsNullOrEmpty(tzCountry)) {
                             log.Warn("Could not determine country; and multiple timezones exist with same GMT offset of " + offset + ". Picking the first.");
+                            tzi = Forms.TimezoneMap.TimezoneMap_StaThread(tzDescription, tzis.FirstOrDefault(), sysTZ);
+                            if (tzi != null) return tzi;
                             return tzis.FirstOrDefault();
                         } else {
                             List<TimeZoneInfo> countryTzis = tzis.Where(t => t.DisplayName.Contains(tzCountry)).ToList();
                             if (countryTzis.Count == 0) {
                                 log.Warn("Could not find timezone with GMT offset of " + offset + " for country " + tzCountry + ". Picking the first offset match regardless of country.");
+                                tzi = Forms.TimezoneMap.TimezoneMap_StaThread(tzDescription, tzis.FirstOrDefault(), sysTZ);
+                                if (tzi != null) return tzi;
                                 return tzis.FirstOrDefault();
                             } else if (countryTzis.Count == 1)
                                 return countryTzis.First();
                             else {
                                 log.Warn("Could not find unique timezone with GMT offset of " + offset + " for country " + tzCountry + ". Picking the first.");
+                                tzi = Forms.TimezoneMap.TimezoneMap_StaThread(tzDescription, countryTzis.FirstOrDefault(), sysTZ);
+                                if (tzi != null) return tzi;
                                 return countryTzis.FirstOrDefault();
                             }
                         }

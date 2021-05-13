@@ -1,10 +1,10 @@
 ﻿using log4net;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Collections.Generic;
 
 namespace OutlookGoogleCalendarSync {
     /// <summary>
@@ -38,14 +38,14 @@ namespace OutlookGoogleCalendarSync {
             }
 
             if (!File.Exists(ConfigFile)) {
-                log.Info("No settings.xml file found in " + Program.WorkingFilesDirectory);
+                log.Info("No settings.xml file found in " + Program.MaskFilePath(Program.WorkingFilesDirectory));
                 Settings.Instance.Save(ConfigFile);
                 log.Info("New blank template created.");
                 if (!Program.IsInstalled)
                     XMLManager.ExportElement("Portable", true, ConfigFile);
             }
 
-            log.Info("Running OGCS from " + System.Windows.Forms.Application.ExecutablePath);
+            log.Info("Running OGCS from " + Program.MaskFilePath(System.Windows.Forms.Application.ExecutablePath));
         }
 
         private static Settings instance;
@@ -81,6 +81,7 @@ namespace OutlookGoogleCalendarSync {
             assignedClientSecret = "";
             PersonalClientIdentifier = "";
             PersonalClientSecret = "";
+            TimezoneMaps = new TimezoneMappingDictionary();
 
             apiLimit_inEffect = false;
             apiLimit_lastHit = DateTime.Parse("01-Jan-2000");
@@ -130,6 +131,36 @@ namespace OutlookGoogleCalendarSync {
             }
         }
 
+        #region Outlook
+        public enum RestrictBy {
+            Include, Exclude
+        }
+        [DataMember] public OutlookOgcs.Calendar.Service OutlookService { get; set; }
+        [DataMember] public string MailboxName { get; set; }
+        [DataMember] public string SharedCalendar { get; set; }
+        [DataMember] public OutlookCalendarListEntry UseOutlookCalendar { get; set; }
+        [DataMember] public RestrictBy CategoriesRestrictBy { get; set; }
+        [DataMember] public System.Collections.Generic.List<string> Categories { get; set; }
+        [DataMember] public Boolean OnlyRespondedInvites { get; set; }
+        [DataMember] public string OutlookDateFormat { get; set; }
+        private Boolean outlookGalBlocked;
+        [DataMember] public Boolean OutlookGalBlocked {
+            get { return outlookGalBlocked; }
+            set {
+                outlookGalBlocked = value;
+                if (!Loading() && Forms.Main.Instance.IsHandleCreated) Forms.Main.Instance.FeaturesBlockedByCorpPolicy(value);
+            }
+        }
+
+        [DataMember] public TimezoneMappingDictionary TimezoneMaps { get; private set; }
+        [CollectionDataContract(
+            ItemName = "TimeZoneMap",
+            KeyName = "OrganiserTz",
+            ValueName = "SystemTz",
+            Namespace = "http://schemas.datacontract.org/2004/07/OutlookGoogleCalendarSync"
+        )]
+        public class TimezoneMappingDictionary : Dictionary<String, String> { }
+        #endregion
         #region Google
         [DataMember] public String AssignedClientIdentifier {
             get { return assignedClientIdentifier; }
@@ -301,6 +332,7 @@ namespace OutlookGoogleCalendarSync {
                 Settings.Instance = XMLManager.Import<Settings>(XMLfile ?? ConfigFile);
                 log.Fine("User settings loaded.");
                 Settings.isLoaded = true;
+
             } catch (ApplicationException ex) {
                 log.Error("Failed to load settings file '" + (XMLfile ?? ConfigFile) + "'. " + ex.Message);
                 ResetFile(XMLfile ?? ConfigFile);
@@ -352,6 +384,10 @@ namespace OutlookGoogleCalendarSync {
             log.Info("  Only Responded Invites: " + Calendars[0].OnlyRespondedInvites);
             log.Info("  Filter String: " + Calendars[0].OutlookDateFormat);
             log.Info("  GAL Blocked: " + Calendars[0].OutlookGalBlocked);
+            if (TimezoneMaps.Count > 0) {
+                log.Info("  Custom Timezone Mapping:-");
+                TimezoneMaps.ToList().ForEach(tz => log.Info("    " + tz.Key + " => " + tz.Value));
+            }
             
             log.Info("GOOGLE SETTINGS:-");
             log.Info("  Calendar: " + (Calendars[0].UseGoogleCalendar == null ? "" : Calendars[0].UseGoogleCalendar.ToString()));

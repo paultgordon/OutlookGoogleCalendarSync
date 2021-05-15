@@ -81,6 +81,7 @@ namespace OutlookGoogleCalendarSync {
             assignedClientSecret = "";
             PersonalClientIdentifier = "";
             PersonalClientSecret = "";
+            DisconnectOutlookBetweenSync = false;
             TimezoneMaps = new TimezoneMappingDictionary();
 
             apiLimit_inEffect = false;
@@ -132,6 +133,7 @@ namespace OutlookGoogleCalendarSync {
         }
 
         #region Outlook
+        [DataMember] public Boolean DisconnectOutlookBetweenSync { get; set; }
         [DataMember] public TimezoneMappingDictionary TimezoneMaps { get; private set; }
         [CollectionDataContract(
             ItemName = "TimeZoneMap",
@@ -364,6 +366,7 @@ namespace OutlookGoogleCalendarSync {
             log.Info("  Only Responded Invites: " + Calendars[0].OnlyRespondedInvites);
             log.Info("  Filter String: " + Calendars[0].OutlookDateFormat);
             log.Info("  GAL Blocked: " + Calendars[0].OutlookGalBlocked);
+            log.Info("  Disconnect Between Sync: " + DisconnectOutlookBetweenSync);
             if (TimezoneMaps.Count > 0) {
                 log.Info("  Custom Timezone Mapping:-");
                 TimezoneMaps.ToList().ForEach(tz => log.Info("    " + tz.Key + " => " + tz.Value));
@@ -424,7 +427,7 @@ namespace OutlookGoogleCalendarSync {
             log.Info(" What");
             log.Info("  AddLocation: " + Calendars[0].AddLocation);
             log.Info("  AddDescription: " + Calendars[0].AddDescription + "; OnlyToGoogle: " + Calendars[0].AddDescription_OnlyToGoogle);
-            log.Info("  AddAttendees: " + Calendars[0].AddAttendees);
+            log.Info("  AddAttendees: " + Calendars[0].AddAttendees + " <" + Calendars[0].MaxAttendees);
             log.Info("  AddColours: " + Calendars[0].AddColours);
             log.Info("  AddReminders: " + Calendars[0].AddReminders);
             log.Info("    UseGoogleDefaultReminder: " + Calendars[0].UseGoogleDefaultReminder);

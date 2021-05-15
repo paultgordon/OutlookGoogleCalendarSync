@@ -55,6 +55,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             ReminderDNDstart = DateTime.Now.Date.AddHours(22);
             ReminderDNDend = DateTime.Now.Date.AddDays(1).AddHours(6);
             AddAttendees = false;
+            MaxAttendees = 200;
             AddColours = false;
             MergeItems = true;
             DisableDelete = true;
@@ -125,6 +126,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         [DataMember] public DateTime ReminderDNDstart { get; set; }
         [DataMember] public DateTime ReminderDNDend { get; set; }
         [DataMember] public bool AddAttendees { get; set; }
+        [DataMember] public int MaxAttendees { get; set; }
         [DataMember] public bool AddColours { get; set; }
         [DataMember] public bool MergeItems { get; set; }
         [DataMember] public bool DisableDelete { get; set; }

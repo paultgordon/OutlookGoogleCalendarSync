@@ -267,6 +267,7 @@
             this.AboutColumnValue = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.cbExcludeDeclinedInvites = new System.Windows.Forms.CheckBox();
             this.cbSingleCategoryOnly = new System.Windows.Forms.CheckBox();
+            this.tbMaxAttendees = new System.Windows.Forms.NumericUpDown();
             this.btProfileAction = new OutlookGoogleCalendarSync.Extensions.MenuButton();
             this.tabApp.SuspendLayout();
             this.tabPage_Sync.SuspendLayout();
@@ -311,6 +312,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pbSocialDonate)).BeginInit();
             this.tableLayoutPanel2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pbSocialTwitterFollow)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.tbMaxAttendees)).BeginInit();
             this.SuspendLayout();
             // 
             // tabApp
@@ -1758,6 +1760,7 @@
             // 
             this.gbSyncOptions_What.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.gbSyncOptions_What.Controls.Add(this.tbMaxAttendees);
             this.gbSyncOptions_What.Controls.Add(this.cbSingleCategoryOnly);
             this.gbSyncOptions_What.Controls.Add(this.btColourMap);
             this.gbSyncOptions_What.Controls.Add(this.cbCloakEmail);
@@ -1789,7 +1792,7 @@
             // 
             this.btColourMap.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btColourMap.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.btColourMap.Location = new System.Drawing.Point(134, 93);
+            this.btColourMap.Location = new System.Drawing.Point(141, 93);
             this.btColourMap.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.btColourMap.Name = "btColourMap";
             this.btColourMap.Size = new System.Drawing.Size(75, 21);
@@ -1804,7 +1807,7 @@
             this.cbCloakEmail.CheckState = System.Windows.Forms.CheckState.Checked;
             this.cbCloakEmail.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cbCloakEmail.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.cbCloakEmail.Location = new System.Drawing.Point(103, 78);
+            this.cbCloakEmail.Location = new System.Drawing.Point(152, 78);
             this.cbCloakEmail.Name = "cbCloakEmail";
             this.cbCloakEmail.Size = new System.Drawing.Size(150, 17);
             this.cbCloakEmail.TabIndex = 41;
@@ -1891,9 +1894,9 @@
             this.cbAddAttendees.ForeColor = System.Drawing.SystemColors.ControlText;
             this.cbAddAttendees.Location = new System.Drawing.Point(22, 78);
             this.cbAddAttendees.Name = "cbAddAttendees";
-            this.cbAddAttendees.Size = new System.Drawing.Size(80, 17);
+            this.cbAddAttendees.Size = new System.Drawing.Size(90, 17);
             this.cbAddAttendees.TabIndex = 30;
-            this.cbAddAttendees.Text = "Attendees";
+            this.cbAddAttendees.Text = "Attendees <";
             this.cbAddAttendees.UseVisualStyleBackColor = true;
             this.cbAddAttendees.CheckedChanged += new System.EventHandler(this.cbAddAttendees_CheckedChanged);
             // 
@@ -3238,6 +3241,38 @@
             this.cbSingleCategoryOnly.Text = "Single category only";
             this.cbSingleCategoryOnly.UseVisualStyleBackColor = true;
             this.cbSingleCategoryOnly.CheckedChanged += new System.EventHandler(this.cbSingleCategoryOnly_CheckedChanged);
+            
+            // 
+            // tbMaxAttendees
+            // 
+            this.tbMaxAttendees.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.tbMaxAttendees.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.tbMaxAttendees.Increment = new decimal(new int[] {
+            10,
+            0,
+            0,
+            0});
+            this.tbMaxAttendees.Location = new System.Drawing.Point(101, 77);
+            this.tbMaxAttendees.Maximum = new decimal(new int[] {
+            200,
+            0,
+            0,
+            0});
+            this.tbMaxAttendees.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.tbMaxAttendees.Name = "tbMaxAttendees";
+            this.tbMaxAttendees.Size = new System.Drawing.Size(40, 20);
+            this.tbMaxAttendees.TabIndex = 48;
+            this.tbMaxAttendees.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.tbMaxAttendees.Value = new decimal(new int[] {
+            200,
+            0,
+            0,
+            0});
+            this.tbMaxAttendees.ValueChanged += new System.EventHandler(this.tbMaxAttendees_ValueChanged);
             // 
             // btProfileAction
             // 
@@ -3326,6 +3361,7 @@
             this.tableLayoutPanel2.ResumeLayout(false);
             this.tableLayoutPanel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pbSocialTwitterFollow)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.tbMaxAttendees)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -3550,6 +3586,7 @@
         private System.Windows.Forms.ComboBox ddAvailabilty;
         private System.Windows.Forms.CheckBox cbExcludeDeclinedInvites;
         private System.Windows.Forms.CheckBox cbSingleCategoryOnly;
+        private System.Windows.Forms.NumericUpDown tbMaxAttendees;
         private System.Windows.Forms.TabPage tabProfile;
         public System.Windows.Forms.ComboBox ddProfile;
         private System.Windows.Forms.Label label34;

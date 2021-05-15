@@ -26,10 +26,11 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         public static Calendar Instance {
             get {
                 try {
-                    if (instance == null || instance.Folders == null) {
+                    if (instance == null)
                         instance = new Calendar();
+                    if (instance.Folders == null)
                         instance.IOutlook.Connect();
-                    }
+
                 } catch (System.ApplicationException) {
                     throw;
                 } catch (System.Exception ex) {
@@ -296,11 +297,15 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             ai.Categories = getColour(ev.ColorId, null);
 
             if (Settings.Instance.ActiveCalendarProfile.AddAttendees && ev.Attendees != null) {
+                if (ev.Attendees != null && ev.Attendees.Count > Settings.Instance.ActiveCalendarProfile.MaxAttendees) {
+                    log.Warn("This Google event has " + ev.Attendees.Count + " attendees, more than the user configured maximum.");
+                } else {
                 foreach (EventAttendee ea in ev.Attendees) {
                     Recipients recipients = ai.Recipients;
                     createRecipient(ea, ref recipients);
                     recipients = (Recipients)ReleaseObject(recipients);
                 }
+            }
             }
 
             //Reminder alert
@@ -384,7 +389,8 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                             Recurrence.Instance.UpdateOutlookExceptions(ref ai, compare.Value, forceCompare: false);
 
                         } else if (needsUpdating || CustomProperty.Exists(ai, CustomProperty.MetadataId.forceSave)) {
-                            if (ai.LastModificationTime > compare.Value.Updated) continue;
+                            if (ai.LastModificationTime > compare.Value.Updated && !CustomProperty.Exists(ai, CustomProperty.MetadataId.forceSave))
+                                continue;
 
                             log.Debug("Doing a dummy update in order to update the last modified date.");
                             CustomProperty.SetOGCSlastModified(ref ai);
@@ -552,14 +558,16 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             }
 
             if (Settings.Instance.ActiveCalendarProfile.AddAttendees) {
+                if (ev.Attendees != null && ev.Attendees.Count > Settings.Instance.ActiveCalendarProfile.MaxAttendees) {
+                    log.Warn("This Google event has " + ev.Attendees.Count + " attendees, more than the user configured maximum.");
+                } else if (Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional &&
+                        ai.Recipients.Count > Settings.Instance.ActiveCalendarProfile.MaxAttendees && (ev.Attendees == null ? 0 : ev.Attendees.Count) <= Settings.Instance.ActiveCalendarProfile.MaxAttendees) {
+                    log.Warn("This Outlook appointment has " + ai.Recipients.Count + " attendees, more than the user configured maximum. They can't safely be compared.");
+                } else {
                 log.Fine("Comparing meeting attendees");
                 Recipients recipients = ai.Recipients;
                 List<EventAttendee> addAttendees = new List<EventAttendee>();
                 try {
-                    if (Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional &&
-                        ev.Attendees != null && ev.Attendees.Count == 0 && recipients.Count > 150) {
-                        log.Info("Attendees not being synced - there are too many (" + recipients.Count + ") for Google.");
-                    } else {
                         //Build a list of Google attendees. Any remaining at the end of the diff must be added.
                         if (ev.Attendees != null) {
                             addAttendees = ev.Attendees.ToList();
@@ -612,10 +620,10 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                             createRecipient(attendee, ref recipients);
                             itemModified++;
                         }
-                    }
                 } finally {
                     recipients = (Recipients)OutlookOgcs.Calendar.ReleaseObject(recipients);
                 }
+            }
             }
 
             //Reminders
@@ -712,7 +720,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
 
             if (Settings.Instance.ActiveCalendarProfile.ConfirmOnDelete) {
                 if (OgcsMessageBox.Show("Delete " + eventSummary + "?", "Confirm Deletion From Outlook",
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No) {
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.No) {
                     doDelete = false;
                     Forms.Main.Instance.Console.Update("Not deleted: " + eventSummary, Console.Markup.calendar);
                 } else {
@@ -1273,9 +1281,14 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     eventSummary += '"' + ai.Subject + '"';
                     if (onlyIfNotVerbose) eventSummary += "<br/>";
 
+                } catch (System.Runtime.InteropServices.COMException ex) { 
+                    if (OGCSexception.GetErrorCode(ex) == "0x8004010F")
+                        throw new System.Exception("Cannot access Outlook OST/PST file. Try restarting Outlook.", ex);
+                    else
+                        OGCSexception.Analyse("Failed to get appointment summary: " + eventSummary, ex, true);
+
                 } catch (System.Exception ex) {
-                    log.Warn("Failed to get appointment summary: " + eventSummary);
-                    OGCSexception.Analyse(ex, true);
+                    OGCSexception.Analyse("Failed to get appointment summary: " + eventSummary, ex, true);
                 }
             }
             return eventSummary;

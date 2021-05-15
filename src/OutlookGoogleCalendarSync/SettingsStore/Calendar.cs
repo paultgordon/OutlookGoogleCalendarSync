@@ -35,6 +35,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             //Google
             UseGoogleCalendar = new GoogleCalendarListEntry();
             CloakEmail = true;
+            ExcludeDeclinedInvites = true;
             ExcludeGoals = true;
 
             //Sync Options
@@ -85,6 +86,8 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         [DataMember] public OutlookCalendarListEntry UseOutlookCalendar { get; set; }
         [DataMember] public RestrictBy CategoriesRestrictBy { get; set; }
         [DataMember] public List<string> Categories { get; set; }
+        /// <summary>Only allow Outlook to have one category assigned</summary>
+        [DataMember] public Boolean SingleCategoryOnly { get; set; }
         [DataMember] public Boolean OnlyRespondedInvites { get; set; }
         [DataMember] public string OutlookDateFormat { get; set; }
         private Boolean outlookGalBlocked;
@@ -99,6 +102,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         #region Google
         [DataMember] public GoogleCalendarListEntry UseGoogleCalendar { get; set; }
         [DataMember] public Boolean CloakEmail { get; set; }
+        [DataMember] public Boolean ExcludeDeclinedInvites { get; set; }
         [DataMember] public Boolean ExcludeGoals { get; set; }
         #endregion
         #region Sync Options

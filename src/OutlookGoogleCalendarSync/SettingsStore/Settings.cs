@@ -371,6 +371,7 @@ namespace OutlookGoogleCalendarSync {
             
             log.Info("GOOGLE SETTINGS:-");
             log.Info("  Calendar: " + (Calendars[0].UseGoogleCalendar == null ? "" : Calendars[0].UseGoogleCalendar.ToString(true)));
+            log.Info("  Exclude Declined Invites: " + Calendars[0].ExcludeDeclinedInvites);
             log.Info("  Exclude Goals: " + Calendars[0].ExcludeGoals);
             log.Info("  Personal API Keys: " + UsingPersonalAPIkeys());
             log.Info("    Client Identifier: " + PersonalClientIdentifier);
@@ -403,6 +404,8 @@ namespace OutlookGoogleCalendarSync {
                     Calendars[0].ColourMaps.ToList().ForEach(c => log.Info("    " + OutlookOgcs.Calendar.Categories.OutlookColour(c.Key) + ":" + c.Key + " <=> " +
                     c.Value + ":" + GoogleOgcs.EventColour.Palette.GetColourName(c.Value)));
             }
+            log.Info("  SingleCategoryOnly: " + Calendars[0].SingleCategoryOnly);
+                if (Calendars[0].Obfuscation.FindReplace.Count == 0) log.Info("    No regex defined.");
             log.Info("  Obfuscate Words: " + Calendars[0].Obfuscation.Enabled);
             if (Calendars[0].Obfuscation.Enabled) {
                 if (Settings.Instance.ActiveCalendarProfile.Obfuscation.FindReplace.Count == 0) log.Info("    No regex defined.");

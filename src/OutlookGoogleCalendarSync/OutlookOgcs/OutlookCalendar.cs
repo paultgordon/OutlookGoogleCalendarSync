@@ -726,9 +726,14 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         #endregion
 
         public void ReclaimOrphanCalendarEntries(ref List<AppointmentItem> oAppointments, ref List<Event> gEvents) {
+            if (Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.OutlookToGoogle) return;
+
+            if (Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.GoogleToOutlook)
+                Forms.Main.Instance.Console.Update("Checking for orphaned Outlook items...", verbose: true);
+
+            try {
             log.Debug("Scanning " + oAppointments.Count + " Outlook appointments for orphans to reclaim...");
             String consoleTitle = "Reclaiming Outlook calendar entries";
-            Forms.Main.Instance.Console.Update("Checking for orphaned items...", verbose: true);
 
             //This is needed for people migrating from other tools, which do not have our GoogleID extendedProperty
             List<AppointmentItem> unclaimedAi = new List<AppointmentItem>();
@@ -760,6 +765,13 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                                 consoleTitle = "";
                                 Forms.Main.Instance.Console.Update("Reclaimed: " + GetEventSummary(ai), verbose: true);
                                 oAppointments[o] = ai;
+
+                                    if (Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional || GoogleOgcs.CustomProperty.ExistsAny(ev)) {
+                                        log.Debug("Updating the Outlook appointment IDs in Google event.");
+                                        GoogleOgcs.CustomProperty.AddOutlookIDs(ref ev, ai);
+                                        GoogleOgcs.Calendar.Instance.UpdateCalendarEntry_save(ref ev);
+                                        gEvents[g] = ev;
+                                    }
                                 break;
                             }
                         }
@@ -768,6 +780,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     Forms.Main.Instance.Console.Update("Failure processing Outlook item:-<br/>" + OutlookOgcs.Calendar.GetEventSummary(ai), Console.Markup.warning);
                     throw;
                 }
+                    if (Sync.Engine.Instance.CancellationPending) return;
             }
             log.Debug(unclaimedAi.Count + " unclaimed.");
             if (unclaimedAi.Count > 0 &&
@@ -794,6 +807,10 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     }
                 }
             }
+            } catch (System.Exception) {
+                Forms.Main.Instance.Console.Update("Unable to reclaim orphan calendar entries in Outlook calendar.", Console.Markup.error);
+                throw;
+        }
         }
 
         private void createRecipient(EventAttendee gea, ref Recipients recipients) {
@@ -850,20 +867,24 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             if (!Settings.Instance.ActiveCalendarProfile.SetEntriesAvailable)
                 return (gTransparency == "transparent") ? OlBusyStatus.olFree : OlBusyStatus.olBusy;
 
+            OlBusyStatus overrideFbStatus = OlBusyStatus.olFree;
+            try {
+                Enum.TryParse(Settings.Instance.ActiveCalendarProfile.AvailabilityStatus, out overrideFbStatus);
+            } catch (System.Exception ex) {
+                OGCSexception.Analyse("Could not convert string '" + Settings.Instance.ActiveCalendarProfile.AvailabilityStatus + "' to OlBusyStatus type. Defaulting override to available.", ex);
+            }
+
             if (Settings.Instance.ActiveCalendarProfile.SyncDirection.Id != Sync.Direction.Bidirectional.Id) {
-                return OlBusyStatus.olFree;
+                return overrideFbStatus;
             } else {
                 if (Settings.Instance.ActiveCalendarProfile.TargetCalendar.Id == Sync.Direction.OutlookToGoogle.Id) { //Availability enforcement is in other direction
                     if (oBusyStatus == null)
                         return (gTransparency == "transparent") ? OlBusyStatus.olFree : OlBusyStatus.olBusy;
-                    else if (oBusyStatus == OlBusyStatus.olFree && gTransparency != "transparent") {
-                        log.Fine("Source of truth for Availability is already set available and target is NOT - so syncing this back.");
-                        return OlBusyStatus.olBusy;
-                    } else
+                    else
                         return (OlBusyStatus)oBusyStatus;
                 } else {
                     if (!Settings.Instance.ActiveCalendarProfile.CreatedItemsOnly || (Settings.Instance.ActiveCalendarProfile.CreatedItemsOnly && oBusyStatus == null))
-                        return OlBusyStatus.olFree;
+                        return overrideFbStatus;
                     else
                         return (gTransparency == "transparent") ? OlBusyStatus.olFree : OlBusyStatus.olBusy;
                 }
@@ -894,7 +915,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 }
 
             } else {
-                return GetCategoryColour(gColourId);
+                return GetCategoryColour(gColourId ?? "0");
             }
         }
         public String GetCategoryColour(String gColourId, Boolean createMissingCategory = true) {
@@ -913,6 +934,8 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
 
             //Algorithmic closest colour matching
             GoogleOgcs.EventColour.Palette pallete = GoogleOgcs.Calendar.Instance.ColourPalette.GetColour(gColourId);
+            if (pallete == GoogleOgcs.EventColour.Palette.NullPalette) return null;
+
             outlookColour = Categories.Map.GetClosestCategory(pallete);
             return Categories.FindName(outlookColour, createMissingCategory: createMissingCategory);
         }
@@ -1322,7 +1345,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 //Don't delete any items that aren't yet in Google or just created in Google during this sync
                 for (int o = outlook.Count - 1; o >= 0; o--) {
                     if (!CustomProperty.Exists(outlook[o], CustomProperty.MetadataId.gEventID) ||
-                        outlook[o].LastModificationTime > Settings.Instance.LastSyncDate)
+                        outlook[o].LastModificationTime > Sync.Engine.Instance.SyncStarted)
                         outlook.Remove(outlook[o]);
                 }
             }

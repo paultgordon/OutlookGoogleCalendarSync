@@ -350,7 +350,7 @@ namespace OutlookGoogleCalendarSync {
         }
 
         public void LogSettings() {
-            log.Info(ConfigFile);
+            log.Info(Program.MaskFilePath(ConfigFile));
             log.Info("OUTLOOK SETTINGS:-");
             log.Info("  Service: "+ Calendars[0].OutlookService.ToString());
             if (Calendars[0].OutlookService == OutlookOgcs.Calendar.Service.SharedCalendar) {
@@ -371,6 +371,7 @@ namespace OutlookGoogleCalendarSync {
             
             log.Info("GOOGLE SETTINGS:-");
             log.Info("  Calendar: " + (Calendars[0].UseGoogleCalendar == null ? "" : Calendars[0].UseGoogleCalendar.ToString(true)));
+            log.Info("  Exclude Goals: " + Calendars[0].ExcludeGoals);
             log.Info("  Personal API Keys: " + UsingPersonalAPIkeys());
             log.Info("    Client Identifier: " + PersonalClientIdentifier);
             log.Info("    Client Secret: " + (PersonalClientSecret.Length < 5
@@ -388,7 +389,7 @@ namespace OutlookGoogleCalendarSync {
             log.Info("  DisableDelete: " + Calendars[0].DisableDelete);
             log.Info("  ConfirmOnDelete: " + Calendars[0].ConfirmOnDelete);
             log.Info("  SetEntriesPrivate: " + Calendars[0].SetEntriesPrivate);
-            log.Info("  SetEntriesAvailable: " + Calendars[0].SetEntriesAvailable);
+            log.Info("  SetEntriesAvailable: " + (Calendars[0].SetEntriesAvailable ? "; " + Calendars[0].AvailabilityStatus : ""));
             log.Info("  SetEntriesColour: " + Calendars[0].SetEntriesColour + (Calendars[0].SetEntriesColour ? "; " + Calendars[0].SetEntriesColourValue + "; \"" + Calendars[0].SetEntriesColourName + "\"" : ""));
             if ((Calendars[0].SetEntriesPrivate || Calendars[0].SetEntriesAvailable || Calendars[0].SetEntriesColour) && Calendars[0].SyncDirection == Sync.Direction.Bidirectional) {
                 log.Info("    TargetCalendar: " + Calendars[0].TargetCalendar.Name);
@@ -396,7 +397,10 @@ namespace OutlookGoogleCalendarSync {
             }
             if (Calendars[0].ColourMaps.Count > 0) {
                 log.Info("  Custom Colour/Category Mapping:-");
-                Calendars[0].ColourMaps.ToList().ForEach(c => log.Info("    " + OutlookOgcs.Calendar.Categories.OutlookColour(c.Key) + ":"+ c.Key + " <=> " + 
+                if (OutlookOgcs.Factory.OutlookVersionName == OutlookOgcs.Factory.OutlookVersionNames.Outlook2003)
+                    log.Fail("    Using Outlook2003 - categories not supported, although mapping exists");
+                else
+                    Calendars[0].ColourMaps.ToList().ForEach(c => log.Info("    " + OutlookOgcs.Calendar.Categories.OutlookColour(c.Key) + ":" + c.Key + " <=> " +
                     c.Value + ":" + GoogleOgcs.EventColour.Palette.GetColourName(c.Value)));
             }
             log.Info("  Obfuscate Words: " + Calendars[0].Obfuscation.Enabled);
@@ -465,6 +469,8 @@ namespace OutlookGoogleCalendarSync {
             log.Info("  Current Locale: " + System.Globalization.CultureInfo.CurrentCulture.Name);
             log.Info("  Short Date Format: "+ System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern);
             log.Info("  Short Time Format: "+ System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.ShortTimePattern);
+            TimeZone curTimeZone = TimeZone.CurrentTimeZone;
+            log.Info("  System Time Zone: " + curTimeZone.StandardName + "; DST=" + curTimeZone.IsDaylightSavingTime(DateTime.Now));
             log.Info("  Completed Syncs: "+ CompletedSyncs);
         }
 

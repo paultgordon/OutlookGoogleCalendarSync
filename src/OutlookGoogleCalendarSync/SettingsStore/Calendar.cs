@@ -35,6 +35,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             //Google
             UseGoogleCalendar = new GoogleCalendarListEntry();
             CloakEmail = true;
+            ExcludeGoals = true;
 
             //Sync Options
             SyncDirection = Sync.Direction.OutlookToGoogle;
@@ -61,6 +62,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             CreatedItemsOnly = true;
             SetEntriesPrivate = false;
             SetEntriesAvailable = false;
+            AvailabilityStatus = Microsoft.Office.Interop.Outlook.OlBusyStatus.olFree.ToString();
             SetEntriesColour = false;
             SetEntriesColourValue = Microsoft.Office.Interop.Outlook.OlCategoryColor.olCategoryColorNone.ToString();
             SetEntriesColourName = "None";
@@ -97,6 +99,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         #region Google
         [DataMember] public GoogleCalendarListEntry UseGoogleCalendar { get; set; }
         [DataMember] public Boolean CloakEmail { get; set; }
+        [DataMember] public Boolean ExcludeGoals { get; set; }
         #endregion
         #region Sync Options
         //Main
@@ -126,6 +129,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         [DataMember] public Boolean CreatedItemsOnly { get; set; }
         [DataMember] public bool SetEntriesPrivate { get; set; }
         [DataMember] public bool SetEntriesAvailable { get; set; }
+        [DataMember] public String AvailabilityStatus { get; set; }
         [DataMember] public bool SetEntriesColour { get; set; }
 
         /// <summary>Set all Outlook appointments to this OlCategoryColor</summary>

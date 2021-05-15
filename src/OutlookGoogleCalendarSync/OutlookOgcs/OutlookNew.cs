@@ -235,12 +235,12 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         log.Warn("Corporate policy or possibly anti-virus is blocking access to GAL.");
                     } else OGCSexception.Analyse(ex);
                     log.Warn("OGCS is unable to interogate CurrentUser from Outlook.");
-                    Settings.Instance.OutlookGalBlocked = true;
+                    Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked = true;
                     return oNS;
                 }
-                if (Settings.Instance.OutlookGalBlocked) {
+                if (Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked) {
                     log.Debug("GAL is no longer blocked!");
-                    Settings.Instance.OutlookGalBlocked = false;
+                    Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked = false;
                 }
             } finally {
                 currentUser = (Recipient)OutlookOgcs.Calendar.ReleaseObject(currentUser);
@@ -261,7 +261,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     log.Fine("Checking mailbox name is still accessible.");
                     Boolean folderExists = false;
                     foreach(MAPIFolder fld in binFolders) {
-                        if (fld.Name == Settings.Instance.MailboxName) {
+                        if (fld.Name == Settings.Instance.ActiveCalendarProfile.MailboxName) {
                             folderExists = true;
                             break;
                         }
@@ -270,11 +270,11 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         binStore = binFolders[Settings.Instance.ActiveCalendarProfile.MailboxName].Store;
                     } else {
                         binStore = binFolders.GetFirst().Store;
-                        log.Warn("Alternate mailbox '" + Settings.Instance.MailboxName + "' could no longer be found. Selected mailbox '" + binStore.DisplayName + "' instead.");
-                        OgcsMessageBox.Show("The alternate mailbox '" + Settings.Instance.MailboxName + "' previously configured for syncing is no longer available.\r\n\r\n" +
+                        log.Warn("Alternate mailbox '" + Settings.Instance.ActiveCalendarProfile.MailboxName + "' could no longer be found. Selected mailbox '" + binStore.DisplayName + "' instead.");
+                        OgcsMessageBox.Show("The alternate mailbox '" + Settings.Instance.ActiveCalendarProfile.MailboxName + "' previously configured for syncing is no longer available.\r\n\r\n" +
                             "'" + binStore.DisplayName + "' mailbox has been selected instead and any automated syncs have been temporarily disabled.",
                             "Mailbox Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                        Settings.Instance.MailboxName = binStore.DisplayName;
+                        Settings.Instance.ActiveCalendarProfile.MailboxName = binStore.DisplayName;
                         Settings.Instance.ActiveCalendarProfile.SyncInterval = 0;
                         Settings.Instance.ActiveCalendarProfile.OutlookPush = false;
                         Forms.Main.Instance.tabApp.SelectTab("tabPage_Settings");
@@ -295,7 +295,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 } catch (System.Exception ex) {
                     OGCSexception.Analyse("Failed to find calendar folders in alternate mailbox '" + Settings.Instance.ActiveCalendarProfile.MailboxName + "'.", ex, true);
                     if (!(Forms.Main.Instance.Visible && Forms.Main.Instance.ActiveControl.Name == "rbOutlookAltMB"))
-                        throw new System.Exception("Failed to access alternate mailbox calendar '" + Settings.Instance.MailboxName + "'", ex);
+                        throw new System.Exception("Failed to access alternate mailbox calendar '" + Settings.Instance.ActiveCalendarProfile.MailboxName + "'", ex);
                 } finally {
                     pa = (PropertyAccessor)OutlookOgcs.Calendar.ReleaseObject(pa);
                     binStore = (Store)OutlookOgcs.Calendar.ReleaseObject(binStore);

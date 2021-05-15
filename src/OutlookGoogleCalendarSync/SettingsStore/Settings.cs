@@ -132,26 +132,6 @@ namespace OutlookGoogleCalendarSync {
         }
 
         #region Outlook
-        public enum RestrictBy {
-            Include, Exclude
-        }
-        [DataMember] public OutlookOgcs.Calendar.Service OutlookService { get; set; }
-        [DataMember] public string MailboxName { get; set; }
-        [DataMember] public string SharedCalendar { get; set; }
-        [DataMember] public OutlookCalendarListEntry UseOutlookCalendar { get; set; }
-        [DataMember] public RestrictBy CategoriesRestrictBy { get; set; }
-        [DataMember] public System.Collections.Generic.List<string> Categories { get; set; }
-        [DataMember] public Boolean OnlyRespondedInvites { get; set; }
-        [DataMember] public string OutlookDateFormat { get; set; }
-        private Boolean outlookGalBlocked;
-        [DataMember] public Boolean OutlookGalBlocked {
-            get { return outlookGalBlocked; }
-            set {
-                outlookGalBlocked = value;
-                if (!Loading() && Forms.Main.Instance.IsHandleCreated) Forms.Main.Instance.FeaturesBlockedByCorpPolicy(value);
-            }
-        }
-
         [DataMember] public TimezoneMappingDictionary TimezoneMaps { get; private set; }
         [CollectionDataContract(
             ItemName = "TimeZoneMap",

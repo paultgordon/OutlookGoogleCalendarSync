@@ -237,7 +237,6 @@
             this.lAboutMain = new System.Windows.Forms.Label();
             this.pbDonate = new System.Windows.Forms.PictureBox();
             this.GappBrowser = new System.Windows.Forms.WebBrowser();
-            this.pbDonate = new System.Windows.Forms.PictureBox();
             this.tabPage_Social = new System.Windows.Forms.TabPage();
             this.label33 = new System.Windows.Forms.Label();
             this.pbSocialDonate = new System.Windows.Forms.PictureBox();
@@ -255,7 +254,6 @@
             this.btSocialGitHub = new System.Windows.Forms.Button();
             this.btFbLike = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
-            this.pbSocialDonate = new System.Windows.Forms.PictureBox();
             this.trayIcon = new System.Windows.Forms.NotifyIcon(this.components);
             this.btProfileAction = new OutlookGoogleCalendarSync.Extensions.MenuButton();
             this.ddCategoryColour = new OutlookGoogleCalendarSync.Extensions.ColourPicker();

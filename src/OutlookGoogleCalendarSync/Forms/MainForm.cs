@@ -245,7 +245,7 @@ namespace OutlookGoogleCalendarSync.Forms {
                 SettingsStore.Calendar profile = Settings.Instance.ActiveCalendarProfile;
                 #region Outlook box
                 #region Mailbox
-            if (OutlookOgcs.Factory.Is2003()) {
+                if (OutlookOgcs.Factory.Is2003()) {
                     rbOutlookDefaultMB.Checked = true;
                     rbOutlookAltMB.Enabled = false;
                     rbOutlookSharedCal.Enabled = false;
@@ -260,7 +260,7 @@ namespace OutlookGoogleCalendarSync.Forms {
                 }
 
                 //Mailboxes the user has access to
-            log.Debug("Find calendar folders");
+                log.Debug("Find calendar folders");
                 if (OutlookOgcs.Calendar.Instance.Folders.Count == 1) {
                     rbOutlookAltMB.Enabled = false;
                     rbOutlookAltMB.Checked = false;
@@ -306,13 +306,13 @@ namespace OutlookGoogleCalendarSync.Forms {
                     c++;
                 }
             if (cbOutlookCalendars.SelectedIndex == -1) {
-                if (!string.IsNullOrEmpty(Settings.Instance.UseOutlookCalendar.Id)) {
-                    log.Warn("Outlook calendar '" + Settings.Instance.UseOutlookCalendar.Name + "' could no longer be found. Selected calendar '" + OutlookOgcs.Calendar.Instance.CalendarFolders.First().Key + "' instead.");
-                    OgcsMessageBox.Show("The Outlook calendar '" + Settings.Instance.UseOutlookCalendar.Name + "' previously configured for syncing is no longer available.\r\n\r\n" +
+                if (!string.IsNullOrEmpty(profile.UseOutlookCalendar.Id)) {
+                    log.Warn("Outlook calendar '" + profile.UseOutlookCalendar.Name + "' could no longer be found. Selected calendar '" + OutlookOgcs.Calendar.Instance.CalendarFolders.First().Key + "' instead.");
+                    OgcsMessageBox.Show("The Outlook calendar '" + profile.UseOutlookCalendar.Name + "' previously configured for syncing is no longer available.\r\n\r\n" +
                         "'" + OutlookOgcs.Calendar.Instance.CalendarFolders.First().Key + "' calendar has been selected instead and any automated syncs have been temporarily disabled.",
                         "Outlook Calendar Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                    Settings.Instance.ActiveCalendarProfile.SyncInterval = 0;
-                    Settings.Instance.ActiveCalendarProfile.OutlookPush = false;
+                    profile.SyncInterval = 0;
+                    profile.OutlookPush = false;
                     Forms.Main.Instance.tabApp.SelectTab("tabPage_Settings");
                 }
                 cbOutlookCalendars.SelectedIndex = 0;

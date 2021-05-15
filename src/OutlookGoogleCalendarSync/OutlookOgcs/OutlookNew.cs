@@ -444,7 +444,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                             "The Outlook calendar to synchonize with.\nSome may not be listed as you are currently disconnected.");
                     } else {
                         OGCSexception.Analyse("Failed to recurse MAPI folders.", ex);
-                        OgcsMessageBox.Show("A problem was encountered when searching for Outlook calendar folders.",
+                        OgcsMessageBox.Show("A problem was encountered when searching for Outlook calendar folders.\r\n" + ex.Message,
                             "Calendar Folders", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                 }
@@ -633,11 +633,11 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         public void RefreshCategories() {
             log.Debug("Refreshing categories...");
             OutlookOgcs.Calendar.Categories.Get(oApp, useOutlookCalendar);
-            Forms.Main.Instance.ddCategoryColour.AddCategoryColours();
-            foreach (Extensions.ColourPicker.ColourInfo cInfo in Forms.Main.Instance.ddCategoryColour.Items) {
+            Forms.Main.Instance.ddOutlookColour.AddColourItems();
+            foreach (OutlookOgcs.Categories.ColourInfo cInfo in Forms.Main.Instance.ddOutlookColour.Items) {
                 if (cInfo.OutlookCategory.ToString() == Settings.Instance.ActiveCalendarProfile.SetEntriesColourValue &&
                     cInfo.Text == Settings.Instance.ActiveCalendarProfile.SetEntriesColourName) {
-                    Forms.Main.Instance.ddCategoryColour.SelectedItem = cInfo;
+                    Forms.Main.Instance.ddOutlookColour.SelectedItem = cInfo;
                 }
             }
         }

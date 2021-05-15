@@ -42,7 +42,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
         private GoogleOgcs.EventColour colourPalette;
         public GoogleOgcs.EventColour ColourPalette {
             get {
-                if (colourPalette == null) {
+                if (colourPalette == null || colourPalette.ActivePalette.Count() == 0) {
                     colourPalette = new EventColour();
                     colourPalette.Get();
                 }
@@ -695,9 +695,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             }
 
             if (Settings.Instance.ActiveCalendarProfile.AddColours || Settings.Instance.ActiveCalendarProfile.SetEntriesColour) {
-                Palette gColour = this.ColourPalette.GetColour(ev.ColorId);
-                Palette oColour = getColour(ai.Categories, gColour);
-                if (Sync.Engine.CompareAttribute("Colour", Sync.Direction.OutlookToGoogle, gColour.HexValue, oColour.HexValue, sb, ref itemModified)) {
+                EventColour.Palette gColour = this.ColourPalette.GetColour(ev.ColorId);
+                EventColour.Palette oColour = getColour(ai.Categories, gColour);
+                if (Sync.Engine.CompareAttribute("Colour", Sync.Direction.OutlookToGoogle, gColour.Name, oColour.Name, sb, ref itemModified)) {
                     ev.ColorId = oColour.Id;
                 }
             }
@@ -1377,22 +1377,22 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
         /// Get the Google palette colour from a list of Outlook categories
         /// </summary>
         /// <param name="aiCategories">The appointment item "categories" field</param>
+        /// <param name="gColour">The Google palette, if already assigned to Event</param>
         /// <returns>A match or a "null" Palette signifying no match</returns>
-        private Palette getColour(String aiCategories, Palette gColour) {
-            if (!Settings.Instance.ActiveCalendarProfile.AddColours && !Settings.Instance.ActiveCalendarProfile.SetEntriesColour) return Palette.NullPalette;
+        private EventColour.Palette getColour(String aiCategories, EventColour.Palette gColour) {
+            if (!Settings.Instance.ActiveCalendarProfile.AddColours && !Settings.Instance.ActiveCalendarProfile.SetEntriesColour) return EventColour.Palette.NullPalette;
 
             OlCategoryColor? categoryColour = null;
 
             if (Settings.Instance.ActiveCalendarProfile.SetEntriesColour) {
                 if (Settings.Instance.ActiveCalendarProfile.TargetCalendar.Id == Sync.Direction.GoogleToOutlook.Id) { //Colour forced to sync in other direction
                     if (gColour == null) //Creating item
-                        getOutlookCategoryColour(aiCategories, ref categoryColour);
+                        return this.ColourPalette.ActivePalette[Convert.ToInt16(Settings.Instance.ActiveCalendarProfile.SetEntriesColourGoogleId)];
                     else return gColour;
 
                 } else {
                     if (!Settings.Instance.ActiveCalendarProfile.CreatedItemsOnly || (Settings.Instance.ActiveCalendarProfile.CreatedItemsOnly && gColour == null)) {
-                        categoryColour = OutlookOgcs.CategoryMap.Colours.Where(c => c.Key.ToString() == Settings.Instance.ActiveCalendarProfile.SetEntriesColourValue).FirstOrDefault().Key;
-                        if (categoryColour == null) log.Warn("Could not convert category name '" + Settings.Instance.ActiveCalendarProfile.SetEntriesColourValue + "' into Outlook category type.");
+                        return this.ColourPalette.ActivePalette[Convert.ToInt16(Settings.Instance.ActiveCalendarProfile.SetEntriesColourGoogleId)];
                     } else return gColour;
                 }
 
@@ -1400,13 +1400,35 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 getOutlookCategoryColour(aiCategories, ref categoryColour);
             }
             if (categoryColour == null || categoryColour == OlCategoryColor.olCategoryColorNone)
-                return Palette.NullPalette;
-            else {
-                System.Drawing.Color color = OutlookOgcs.CategoryMap.RgbColour((OlCategoryColor)categoryColour);
-                Palette closest = ColourPalette.GetClosestColour(color);
-                return (closest.Id == "Custom") ? Palette.NullPalette : closest;
+                return EventColour.Palette.NullPalette;
+            else
+                return GetColour((OlCategoryColor)categoryColour);
             }
+
+        public EventColour.Palette GetColour(OlCategoryColor categoryColour) {
+            EventColour.Palette gColour = null;
+
+            if (Settings.Instance.ActiveCalendarProfile.ColourMaps.Count > 0) {
+                KeyValuePair<String, String> kvp = Settings.Instance.ActiveCalendarProfile.ColourMaps.FirstOrDefault(cm => OutlookOgcs.Calendar.Categories.OutlookColour(cm.Key) == categoryColour);
+                if (kvp.Key != null) {
+                    gColour = ColourPalette.ActivePalette.FirstOrDefault(ap => ap.Id == kvp.Value);
+                    if (gColour != null) {
+                        log.Debug("Colour mapping used: " + kvp.Key + " => " + kvp.Value + ":" + gColour.Name);
+                        return gColour;
         }
+                }
+            }
+            //Algorithmic closest colour matching
+            System.Drawing.Color color = OutlookOgcs.Categories.Map.RgbColour((OlCategoryColor)categoryColour);
+            EventColour.Palette closest = ColourPalette.GetClosestColour(color);
+            return (closest.Id == "0") ? EventColour.Palette.NullPalette : closest;
+        }
+
+        /// <summary>
+        /// Get the first Outlook category colour from any defined against an Appointment's category(ies)
+        /// </summary>
+        /// <param name="aiCategories">The appointment categories assigned</param>
+        /// <param name="categoryColour">The category colour identified</param>
         private void getOutlookCategoryColour(String aiCategories, ref OlCategoryColor? categoryColour) {
             if (!string.IsNullOrEmpty(aiCategories)) {
                 log.Fine("Categories: " + aiCategories);
@@ -1664,7 +1686,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 ex.Data.Add("OGCS", "Unauthenticated access to Google account attempted. Authentication required.");
                 return ApiException.throwException;
 
-            } else if (ex.Error.Code == 401 && ex.Error.Message.Contains("Unauthorized")) {
+            } else if (ex.Error != null && ex.Error.Code == 401 && ex.Error.Message.Contains("Unauthorized")) {
                 log.Warn(ex.Message);
                 log.Debug("This error seems to be a new transient issue, so treating it with exponential backoff...");
                 return ApiException.backoffThenRetry;

@@ -64,6 +64,8 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             SetEntriesColour = false;
             SetEntriesColourValue = Microsoft.Office.Interop.Outlook.OlCategoryColor.olCategoryColorNone.ToString();
             SetEntriesColourName = "None";
+            SetEntriesColourGoogleId = "0";
+            ColourMaps = new ColourMappingDictionary();
             Obfuscation = new Obfuscate();
             
             ExtirpateOgcsMetadata = false;
@@ -125,8 +127,22 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         [DataMember] public bool SetEntriesPrivate { get; set; }
         [DataMember] public bool SetEntriesAvailable { get; set; }
         [DataMember] public bool SetEntriesColour { get; set; }
+
+        /// <summary>Set all Outlook appointments to this OlCategoryColor</summary>
         [DataMember] public String SetEntriesColourValue { get; set; }
+        /// <summary>Set all Outlook appointments to this custom category name</summary>
         [DataMember] public String SetEntriesColourName { get; set; }
+        /// <summary>Set all Google events to this colour ID</summary>
+        [DataMember] public String SetEntriesColourGoogleId { get; set; }
+        [DataMember]
+        public ColourMappingDictionary ColourMaps { get; private set; }
+        [CollectionDataContract(
+            ItemName = "ColourMap",
+            KeyName = "OutlookCategoryName",
+            ValueName = "GoogleColourId",
+            Namespace = "http://schemas.datacontract.org/2004/07/OutlookGoogleCalendarSync"
+        )]
+        public class ColourMappingDictionary : Dictionary<String, String> { }
 
         //Obfuscation
         [DataMember] public Obfuscate Obfuscation { get; set; }

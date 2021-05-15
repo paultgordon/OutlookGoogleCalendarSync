@@ -358,7 +358,7 @@ namespace OutlookGoogleCalendarSync {
             } else {
                 log.Info("  Mailbox/FolderStore Name: " + Calendars[0].MailboxName);
             }
-            log.Info("  Calendar: "+ (Calendars[0].UseOutlookCalendar.Name=="Calendar"?"Default ":"") + Calendars[0].UseOutlookCalendar.Name);
+            log.Info("  Calendar: "+ (Calendars[0].UseOutlookCalendar.Name=="Calendar"?"Default ":"") + Calendars[0].UseOutlookCalendar.ToString());
             log.Info("  Category Filter: " + Calendars[0].CategoriesRestrictBy.ToString());
             log.Info("  Categories: " + String.Join(",", Calendars[0].Categories.ToArray()));
             log.Info("  Only Responded Invites: " + Calendars[0].OnlyRespondedInvites);
@@ -370,7 +370,7 @@ namespace OutlookGoogleCalendarSync {
             }
             
             log.Info("GOOGLE SETTINGS:-");
-            log.Info("  Calendar: " + (Calendars[0].UseGoogleCalendar == null ? "" : Calendars[0].UseGoogleCalendar.ToString()));
+            log.Info("  Calendar: " + (Calendars[0].UseGoogleCalendar == null ? "" : Calendars[0].UseGoogleCalendar.ToString(true)));
             log.Info("  Personal API Keys: " + UsingPersonalAPIkeys());
             log.Info("    Client Identifier: " + PersonalClientIdentifier);
             log.Info("    Client Secret: " + (PersonalClientSecret.Length < 5
@@ -393,6 +393,11 @@ namespace OutlookGoogleCalendarSync {
             if ((Calendars[0].SetEntriesPrivate || Calendars[0].SetEntriesAvailable || Calendars[0].SetEntriesColour) && Calendars[0].SyncDirection == Sync.Direction.Bidirectional) {
                 log.Info("    TargetCalendar: " + Calendars[0].TargetCalendar.Name);
                 log.Info("    CreatedItemsOnly: " + Calendars[0].CreatedItemsOnly);
+            }
+            if (Calendars[0].ColourMaps.Count > 0) {
+                log.Info("  Custom Colour/Category Mapping:-");
+                Calendars[0].ColourMaps.ToList().ForEach(c => log.Info("    " + OutlookOgcs.Calendar.Categories.OutlookColour(c.Key) + ":"+ c.Key + " <=> " + 
+                    c.Value + ":" + GoogleOgcs.EventColour.Palette.GetColourName(c.Value)));
             }
             log.Info("  Obfuscate Words: " + Calendars[0].Obfuscation.Enabled);
             if (Calendars[0].Obfuscation.Enabled) {

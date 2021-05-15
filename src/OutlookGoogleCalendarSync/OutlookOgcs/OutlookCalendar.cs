@@ -615,7 +615,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             }
 
             //Reminders
-            Boolean googleReminders = ev.Reminders.Overrides != null && ev.Reminders.Overrides.Any(r => r.Method == "popup");
+            Boolean googleReminders = ev.Reminders != null && ev.Reminders.Overrides != null && ev.Reminders.Overrides.Any(r => r.Method == "popup");
             if (Settings.Instance.ActiveCalendarProfile.AddReminders) {
                 if (googleReminders) {
                     //Find the last popup reminder in Google
@@ -874,32 +874,47 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         /// Get the Outlook category colour name from a Google colour ID
         /// </summary>
         /// <param name="gColourId">The Google colour ID</param>
-        /// <param name="oColour">The Outlook category</param>
+        /// <param name="oColour">The Outlook category, if already assigned to appointment</param>
         /// <returns>Outlook category name</returns>
         private String getColour(String gColourId, String oColour) {
             if (!Settings.Instance.ActiveCalendarProfile.AddColours && !Settings.Instance.ActiveCalendarProfile.SetEntriesColour) return "";
 
             if (Settings.Instance.ActiveCalendarProfile.SetEntriesColour) {
                 if (Settings.Instance.ActiveCalendarProfile.TargetCalendar.Id == Sync.Direction.OutlookToGoogle.Id) { //Colour forced to sync in other direction
-                    if (oColour == null) //Creating item
-                        return getGoogleCategoryColour(gColourId);
-                    else return oColour;
+                    if (oColour == null) { //Creating item
+                        OlCategoryColor outlookColour = OutlookOgcs.Categories.Map.Colours.Where(c => c.Key.ToString() == Settings.Instance.ActiveCalendarProfile.SetEntriesColourValue).FirstOrDefault().Key;
+                        return Categories.FindName(outlookColour, Settings.Instance.ActiveCalendarProfile.SetEntriesColourName);
+                    } else return oColour;
 
                 } else {
                     if (!Settings.Instance.ActiveCalendarProfile.CreatedItemsOnly || (Settings.Instance.ActiveCalendarProfile.CreatedItemsOnly && oColour == null)) {
-                        OlCategoryColor outlookColour = OutlookOgcs.CategoryMap.Colours.Where(c => c.Key.ToString() == Settings.Instance.ActiveCalendarProfile.SetEntriesColourValue).FirstOrDefault().Key;
+                        OlCategoryColor outlookColour = OutlookOgcs.Categories.Map.Colours.Where(c => c.Key.ToString() == Settings.Instance.ActiveCalendarProfile.SetEntriesColourValue).FirstOrDefault().Key;
                         return Categories.FindName(outlookColour, Settings.Instance.ActiveCalendarProfile.SetEntriesColourName);
                     } else return oColour;
                 }
 
             } else {
-                return getGoogleCategoryColour(gColourId);
+                return GetCategoryColour(gColourId);
             }
         }
-        private String getGoogleCategoryColour(String gColourId) {
-            GoogleOgcs.Palette pallete = GoogleOgcs.Calendar.Instance.ColourPalette.GetColour(gColourId);
-            OlCategoryColor outlookColour = CategoryMap.GetClosestCategory(pallete);
-            return Categories.FindName(outlookColour);
+        public String GetCategoryColour(String gColourId, Boolean createMissingCategory = true) {
+            OlCategoryColor? outlookColour = null;
+
+            if (Settings.Instance.ActiveCalendarProfile.ColourMaps.Count > 0) {
+                KeyValuePair<String, String> kvp = Settings.Instance.ActiveCalendarProfile.ColourMaps.FirstOrDefault(cm => cm.Value == gColourId);
+                if (kvp.Key != null) {
+                    outlookColour = OutlookOgcs.Calendar.Categories.OutlookColour(kvp.Key);
+                    if (outlookColour != null) {
+                        log.Debug("Colour mapping used: " + kvp.Value + ":"+ GoogleOgcs.Calendar.Instance.ColourPalette.GetColour(gColourId).Name +" => " + kvp.Key);
+                        return kvp.Key;
+        }
+                }
+            }
+
+            //Algorithmic closest colour matching
+            GoogleOgcs.EventColour.Palette pallete = GoogleOgcs.Calendar.Instance.ColourPalette.GetColour(gColourId);
+            outlookColour = Categories.Map.GetClosestCategory(pallete);
+            return Categories.FindName(outlookColour, createMissingCategory: createMissingCategory);
         }
 
         #region STATIC functions

@@ -281,7 +281,8 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
 
         private MAPIFolder getCalendarStore(NameSpace oNS) {
             MAPIFolder defaultCalendar = null;
-            if (Settings.Instance.ActiveCalendarProfile.OutlookService == OutlookOgcs.Calendar.Service.AlternativeMailbox && Settings.Instance.ActiveCalendarProfile.MailboxName != "") {
+            SettingsStore.Calendar profile = Settings.Instance.ActiveCalendarProfile;
+            if (profile.OutlookService == OutlookOgcs.Calendar.Service.AlternativeMailbox && profile.MailboxName != "") {
                 log.Debug("Finding Alternative Mailbox calendar folders");
                 Folders binFolders = null;
                 Store binStore = null;
@@ -291,22 +292,22 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     log.Fine("Checking mailbox name is still accessible.");
                     Boolean folderExists = false;
                     foreach(MAPIFolder fld in binFolders) {
-                        if (fld.Name == Settings.Instance.ActiveCalendarProfile.MailboxName) {
+                        if (fld.Name == profile.MailboxName) {
                             folderExists = true;
                             break;
                         }
                     }
                     if (folderExists) {
-                        binStore = binFolders[Settings.Instance.ActiveCalendarProfile.MailboxName].Store;
+                        binStore = binFolders[profile.MailboxName].Store;
                     } else {
                         binStore = binFolders.GetFirst().Store;
-                        log.Warn("Alternate mailbox '" + Settings.Instance.ActiveCalendarProfile.MailboxName + "' could no longer be found. Selected mailbox '" + binStore.DisplayName + "' instead.");
-                        OgcsMessageBox.Show("The alternate mailbox '" + Settings.Instance.ActiveCalendarProfile.MailboxName + "' previously configured for syncing is no longer available.\r\n\r\n" +
+                        log.Warn("Alternate mailbox '" + profile.MailboxName + "' could no longer be found. Selected mailbox '" + binStore.DisplayName + "' instead.");
+                        OgcsMessageBox.Show("The alternate mailbox '" + profile.MailboxName + "' previously configured for syncing is no longer available.\r\n\r\n" +
                             "'" + binStore.DisplayName + "' mailbox has been selected instead and any automated syncs have been temporarily disabled.",
                             "Mailbox Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                        Settings.Instance.ActiveCalendarProfile.MailboxName = binStore.DisplayName;
-                        Settings.Instance.ActiveCalendarProfile.SyncInterval = 0;
-                        Settings.Instance.ActiveCalendarProfile.OutlookPush = false;
+                        profile.MailboxName = binStore.DisplayName;
+                        profile.SyncInterval = 0;
+                        profile.OutlookPush = false;
                         Forms.Main.Instance.tabApp.SelectTab("tabPage_Settings");
                     }
                     pa = binStore.PropertyAccessor;
@@ -319,13 +320,13 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     }
                     Forms.Main.Instance.lOutlookCalendar.Text = "Getting calendars";
                     Forms.Main.Instance.lOutlookCalendar.BackColor = System.Drawing.Color.Yellow;
-                    findCalendars(oNS.Folders[Settings.Instance.ActiveCalendarProfile.MailboxName].Folders, calendarFolders, excludeDeletedFolder);
+                    findCalendars(oNS.Folders[profile.MailboxName].Folders, calendarFolders, excludeDeletedFolder);
                     Forms.Main.Instance.lOutlookCalendar.BackColor = System.Drawing.Color.White;
                     Forms.Main.Instance.lOutlookCalendar.Text = "Select calendar";
                 } catch (System.Exception ex) {
-                    OGCSexception.Analyse("Failed to find calendar folders in alternate mailbox '" + Settings.Instance.ActiveCalendarProfile.MailboxName + "'.", ex, true);
+                    OGCSexception.Analyse("Failed to find calendar folders in alternate mailbox '" + profile.MailboxName + "'.", ex, true);
                     if (!(Forms.Main.Instance.Visible && Forms.Main.Instance.ActiveControl.Name == "rbOutlookAltMB"))
-                        throw new System.Exception("Failed to access alternate mailbox calendar '" + Settings.Instance.ActiveCalendarProfile.MailboxName + "'", ex);
+                        throw new System.Exception("Failed to access alternate mailbox calendar '" + profile.MailboxName + "'", ex);
                 } finally {
                     pa = (PropertyAccessor)OutlookOgcs.Calendar.ReleaseObject(pa);
                     binStore = (Store)OutlookOgcs.Calendar.ReleaseObject(binStore);
@@ -342,7 +343,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     Forms.Main.Instance.ddMailboxName.Text = "";
                 }
 
-            } else if (Settings.Instance.ActiveCalendarProfile.OutlookService == OutlookOgcs.Calendar.Service.SharedCalendar) {
+            } else if (profile.OutlookService == OutlookOgcs.Calendar.Service.SharedCalendar) {
                 log.Debug("Finding shared calendar");
                 if (Forms.Main.Instance.Visible && Forms.Main.Instance.ActiveControl?.Name == "rbOutlookSharedCal") {
                     SelectNamesDialog snd;
@@ -360,7 +361,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                             MAPIFolder sharedCalendar = getSharedCalendar(oNS, sharedURI, true);
                             if (sharedCalendar == null) getDefaultCalendar(oNS, ref defaultCalendar);
                             else {
-                                Settings.Instance.ActiveCalendarProfile.SharedCalendar = sharedURI;
+                                profile.SharedCalendar = sharedURI;
                                 return sharedCalendar;
                             }
                         }
@@ -368,7 +369,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         snd = null;
                     }
                 } else {
-                    defaultCalendar = getSharedCalendar(oNS, Settings.Instance.ActiveCalendarProfile.SharedCalendar, false);
+                    defaultCalendar = getSharedCalendar(oNS, profile.SharedCalendar, false);
                     return defaultCalendar;
                 }
 

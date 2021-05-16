@@ -470,7 +470,7 @@ namespace OutlookGoogleCalendarSync {
                     if (settingsVersion != "Unknown") {
                         upgradedFrom = Program.VersionToInt(settingsVersion);
                     }
-                    if ((settingsVersion == "Unknown" || upgradedFrom < 2050000) &&
+                    if (!Program.InDeveloperMode && (settingsVersion == "Unknown" || upgradedFrom < 2050000) &&
                         !System.Windows.Forms.Application.ExecutablePath.ToString().StartsWith(expectedInstallDir)) {
                         log.Warn("OGCS is running from " + System.Windows.Forms.Application.ExecutablePath.ToString());
                         OgcsMessageBox.Show("A suspected improper install location has been detected.\r\n" +

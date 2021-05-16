@@ -12,7 +12,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         private static readonly ILog log = LogManager.GetLogger(typeof(Upgrade));
 
         //OGCS releases that require the settings XML to be upgraded
-        private const Int32 multipleCalendars = 2070901; //v2.7.9.1;
+        private const Int32 multipleCalendars = 2080701; //v2.8.7.1;
 
         private static String settingsVersion;
         private static Int32 settingsVersionNum;
@@ -42,11 +42,21 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         }
 
         private static void backupSettingsFile() {
+            if (string.IsNullOrEmpty(settingsVersion)) {
+                log.Debug("The settings file is a vanilla template. No need to back it up.");
+                return;
+            }
+            
+            String backupFile = "";
             try {
                 log.Info("Backing up '" + Settings.ConfigFile + "' for v" + settingsVersion);
-                String backupFile = System.Text.RegularExpressions.Regex.Replace(Settings.ConfigFile, @"(\.\w+)$", "-v" + settingsVersion + "$1");
-                File.Copy(Settings.ConfigFile, backupFile);
+                backupFile = System.Text.RegularExpressions.Regex.Replace(Settings.ConfigFile, @"(\.\w+)$", "-v" + settingsVersion + "$1");
+                File.Copy(Settings.ConfigFile, backupFile, false);
                 log.Info(backupFile + " created.");
+            } catch (System.IO.IOException ex) {
+                if (OGCSexception.GetErrorCode(ex) == "0x80070050") { //File already exists
+                    log.Warn("The backfile already exists, not overwriting " + backupFile);
+                }
             } catch (System.Exception ex) {
                 OGCSexception.Analyse("Failed to create backup settings file", ex);
             }
@@ -62,6 +72,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
                 XElement calendarsElement = XMLManager.AddElement("Calendars", settingsElement);
                 XElement calendarElement = XMLManager.AddElement("Calendar", calendarsElement);
 
+                //If a source element doesn't exist, the XML is not changed
                 XMLManager.MoveElement("OutlookService", settingsElement, calendarElement);
                 XMLManager.MoveElement("MailboxName", settingsElement, calendarElement);
                 XMLManager.MoveElement("SharedCalendar", settingsElement, calendarElement);
@@ -74,6 +85,8 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
                 
                 XMLManager.MoveElement("UseGoogleCalendar", settingsElement, calendarElement);
                 XMLManager.MoveElement("CloakEmail", settingsElement, calendarElement);
+                XMLManager.MoveElement("ExcludeDeclinedInvites", settingsElement, calendarElement);
+                XMLManager.MoveElement("ExcludeGoals", settingsElement, calendarElement);
 
                 XMLManager.MoveElement("SyncDirection", settingsElement, calendarElement);
                 XMLManager.MoveElement("DaysInThePast", settingsElement, calendarElement);
@@ -91,6 +104,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
                 XMLManager.MoveElement("ReminderDNDstart", settingsElement, calendarElement);
                 XMLManager.MoveElement("ReminderDNDend", settingsElement, calendarElement);
                 XMLManager.MoveElement("AddAttendees", settingsElement, calendarElement);
+                XMLManager.MoveElement("MaxAttendees", settingsElement, calendarElement);
                 XMLManager.MoveElement("AddColours", settingsElement, calendarElement);
                 XMLManager.MoveElement("MergeItems", settingsElement, calendarElement);
                 XMLManager.MoveElement("DisableDelete", settingsElement, calendarElement);
@@ -99,9 +113,13 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
                 XMLManager.MoveElement("CreatedItemsOnly", settingsElement, calendarElement);
                 XMLManager.MoveElement("SetEntriesPrivate", settingsElement, calendarElement);
                 XMLManager.MoveElement("SetEntriesAvailable", settingsElement, calendarElement);
+                XMLManager.MoveElement("AvailabilityStatus", settingsElement, calendarElement);
                 XMLManager.MoveElement("SetEntriesColour", settingsElement, calendarElement);
                 XMLManager.MoveElement("SetEntriesColourValue", settingsElement, calendarElement);
                 XMLManager.MoveElement("SetEntriesColourName", settingsElement, calendarElement);
+                XMLManager.MoveElement("SetEntriesColourGoogleId", settingsElement, calendarElement);
+                XMLManager.MoveElement("ColourMaps", settingsElement, calendarElement);
+                XMLManager.MoveElement("SingleCategoryOnly", settingsElement, calendarElement);
                 XMLManager.MoveElement("Obfuscation", settingsElement, calendarElement);
                 
                 XMLManager.MoveElement("ExtirpateOgcsMetadata", settingsElement, calendarElement);

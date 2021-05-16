@@ -168,7 +168,9 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
 
             log.Debug("Changing active settings profile '" + this._ProfileName + "'.");
             Settings.Instance.ActiveCalendarProfile = this;
-            Forms.Main.Instance.UpdateGUIsettings_Profile();
+
+            if (Forms.Main.Instance.Visible) 
+                Forms.Main.Instance?.UpdateGUIsettings_Profile();
         }
     }
 }

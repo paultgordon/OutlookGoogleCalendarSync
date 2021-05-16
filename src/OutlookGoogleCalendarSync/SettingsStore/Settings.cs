@@ -65,17 +65,15 @@ namespace OutlookGoogleCalendarSync {
         private Boolean suppressSocialPopup;
         private bool? cloudLogging;
 
-        public Settings() {
-            setDefaults();
-        }
+        public Settings() { }
 
         //Default values before Loading() from xml and attribute not yet serialized
         [OnDeserializing]
         void OnDeserializing(StreamingContext context) {
-            setDefaults();
+            SetDefaults();
         }
 
-        private void setDefaults() {
+        public void SetDefaults() {
             //Default values
             assignedClientIdentifier = "";
             assignedClientSecret = "";
@@ -88,7 +86,7 @@ namespace OutlookGoogleCalendarSync {
             apiLimit_lastHit = DateTime.Parse("01-Jan-2000");
             GaccountEmail = "";
 
-            List<SettingsStore.Calendar>Calendars = new List<SettingsStore.Calendar>();
+            Calendars = new List<SettingsStore.Calendar>();
             Calendars.Add(new SettingsStore.Calendar());
 
             MuteClickSounds = false;
@@ -124,7 +122,7 @@ namespace OutlookGoogleCalendarSync {
 
         public static Settings Instance {
             get {
-                if (instance == null) instance = new Settings();
+                if (instance == null) (instance = new Settings()).SetDefaults();
                 return instance;
             }
             set {

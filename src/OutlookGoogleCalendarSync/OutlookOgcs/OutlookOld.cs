@@ -41,9 +41,9 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
 
                 oNS = GetCurrentUser(oNS);
                 
-                if (!Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked && currentUserName == "Unknown") {
+                if (!Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked && currentUserName == "Unknown") {
                     log.Info("Current username is \"Unknown\"");
-                    if (Settings.Instance.ActiveCalendarProfile.AddAttendees) {
+                    if (Forms.Main.Instance.ActiveCalendarProfile.AddAttendees) {
                         System.Windows.Forms.MessageBox.Show("It appears you do not have an Email Account configured in Outlook.\r\n" +
                             "You should set one up now (Tools > Email Accounts) to avoid problems syncing meeting attendees.",
                             "No Email Account Found", System.Windows.Forms.MessageBoxButtons.OK,
@@ -65,7 +65,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     //Select the right calendar
                     int c = 0;
                     foreach (KeyValuePair<String, MAPIFolder> calendarFolder in calendarFolders) {
-                        if (calendarFolder.Value.EntryID == Settings.Instance.ActiveCalendarProfile.UseOutlookCalendar.Id) {
+                        if (calendarFolder.Value.EntryID == Forms.Main.Instance.ActiveCalendarProfile.UseOutlookCalendar.Id) {
                             Forms.Main.Instance.SetControlPropertyThreadSafe(Forms.Main.Instance.cbOutlookCalendars, "SelectedIndex", c);
                         }
                         c++;
@@ -149,7 +149,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         public NameSpace GetCurrentUser(NameSpace oNS) {
             //We only need the current user details when syncing meeting attendees.
             //If GAL had previously been detected as blocked, let's always try one attempt to see if it's been opened up
-            if (!Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked && !Settings.Instance.ActiveCalendarProfile.AddAttendees) return oNS;
+            if (!Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked && !Forms.Main.Instance.ActiveCalendarProfile.AddAttendees) return oNS;
 
             Boolean releaseNamespace = (oNS == null);
             if (releaseNamespace) oNS = oApp.GetNamespace("mapi");
@@ -165,7 +165,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     }
                 } catch (System.Exception ex) {
                     OGCSexception.Analyse(ex);
-                    if (Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked) { //Fail fast
+                    if (Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked) { //Fail fast
                         log.Debug("Corporate policy is still blocking access to GAL.");
                         return oNS;
                     }
@@ -189,7 +189,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                                     log.Warn("Corporate policy or possibly anti-virus is blocking access to GAL.");
                                 } else OGCSexception.Analyse(ex2);
                                 log.Warn("OGCS is unable to obtain CurrentUser from Outlook.");
-                                Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked = true;
+                                Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked = true;
                                 return oNS;
                             }
                             OGCSexception.Analyse(ex2);
@@ -197,8 +197,8 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         delay++;
                     }
                 }
-                if (Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked) log.Debug("GAL is no longer blocked!");
-                Settings.Instance.ActiveCalendarProfile.OutlookGalBlocked = false;
+                if (Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked) log.Debug("GAL is no longer blocked!");
+                Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked = false;
                 currentUserSMTP = GetRecipientEmail(currentUser);
                 currentUserName = currentUser.Name;
             } finally {
@@ -210,7 +210,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
 
         private MAPIFolder getCalendarStore(NameSpace oNS) {
             MAPIFolder defaultCalendar = null;
-            if (Settings.Instance.ActiveCalendarProfile.OutlookService == OutlookOgcs.Calendar.Service.DefaultMailbox) {
+            if (Forms.Main.Instance.ActiveCalendarProfile.OutlookService == OutlookOgcs.Calendar.Service.DefaultMailbox) {
                 getDefaultCalendar(oNS, ref defaultCalendar);
             }
             log.Debug("Default Calendar folder: " + defaultCalendar.Name);
@@ -251,7 +251,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             try {
                 Forms.Main.Instance.rbOutlookDefaultMB.CheckedChanged -= Forms.Main.Instance.rbOutlookDefaultMB_CheckedChanged;
                 Forms.Main.Instance.rbOutlookDefaultMB.Checked = true;
-                Settings.Instance.ActiveCalendarProfile.OutlookService = OutlookOgcs.Calendar.Service.DefaultMailbox;
+                Forms.Main.Instance.ActiveCalendarProfile.OutlookService = OutlookOgcs.Calendar.Service.DefaultMailbox;
                 Forms.Main.Instance.rbOutlookDefaultMB.CheckedChanged += Forms.Main.Instance.rbOutlookDefaultMB_CheckedChanged;
 
                 defaultCalendar = oNS.GetDefaultFolder(OlDefaultFolders.olFolderCalendar);

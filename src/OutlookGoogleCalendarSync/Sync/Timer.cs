@@ -7,20 +7,39 @@ namespace OutlookGoogleCalendarSync.Sync {
         private static readonly ILog log = LogManager.GetLogger(typeof(SyncTimer));
         private Timer ogcsTimer;
         
-        /// <summary>
-        /// Should only be set via SettingsStore class
-        /// </summary>
         public DateTime LastSyncDate { internal get; set; }
 
-        private DateTime nextSyncDate;
-        public DateTime NextSyncDate {
+        private DateTime? nextSyncDate;
+        public DateTime? NextSyncDate_New {
             get { return nextSyncDate; }
             set {
                 nextSyncDate = value;
-                NextSyncDateText = nextSyncDate.ToLongDateString() + " @ " + nextSyncDate.ToLongTimeString();
-                if (Forms.Main.Instance.ActiveCalendarProfile.OutlookPush) NextSyncDateText += " + Push";
-                Forms.Main.Instance.NextSyncVal = NextSyncDateText;
-                log.Info("Next sync scheduled for " + NextSyncDateText);
+                if (nextSyncDate != null) {
+                    DateTime theDate = (DateTime)nextSyncDate;
+                    NextSyncDateText = theDate.ToLongDateString() + " @ " + theDate.ToLongTimeString();
+                    if (Forms.Main.Instance.ActiveCalendarProfile.OutlookPush) NextSyncDateText += " + Push";
+                    Forms.Main.Instance.NextSyncVal = NextSyncDateText;
+                    log.Info("Next sync scheduled for " + NextSyncDateText);
+                }
+            }
+        }
+
+        public DateTime? NextSyncDate {
+            get {
+                try {
+                    if ("Inactive;Push Sync Active;In progress...".Contains(Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText) || !ogcsTimer.Enabled) {
+                        return null;
+                    } else {
+                        return DateTime.ParseExact(Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText.Replace(" + Push", ""),
+                            System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.LongDatePattern + " @ " +
+                            System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.LongTimePattern,
+                            System.Globalization.CultureInfo.CurrentCulture);
+                    }
+                } catch (System.Exception ex) {
+                    log.Warn("Failed to determine next sync date from '" + Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText + "'");
+                    log.Error(ex.Message);
+                    return null;
+                }
             }
         }
         public String NextSyncDateText { get; internal set; }
@@ -32,6 +51,7 @@ namespace OutlookGoogleCalendarSync.Sync {
 
             //Refresh synchronizations (last and next)
             this.LastSyncDate = lastSync;
+            //owner.LastSyncDate = Forms.Main.Instance.ActiveCalendarProfile.LastSyncDate;
             SetNextSync(getResyncInterval());
         }
 
@@ -61,7 +81,7 @@ namespace OutlookGoogleCalendarSync.Sync {
             int _delayMins = delayMins ?? getResyncInterval();
 
             if (Forms.Main.Instance.ActiveCalendarProfile.SyncInterval != 0) {
-                DateTime nextSyncDate = this.LastSyncDate.AddMinutes(_delayMins);
+                DateTime nextSyncDate = LastSyncDate.AddMinutes(_delayMins);
                 DateTime now = DateTime.Now;
                 if (fromNow)
                     nextSyncDate = now.AddMinutes(_delayMins);
@@ -77,7 +97,7 @@ namespace OutlookGoogleCalendarSync.Sync {
                     }
                     this.Start();
                 }
-                NextSyncDate = nextSyncDate;
+                NextSyncDate_New = nextSyncDate;
             } else {
                 this.Stop();
                 Forms.Main.Instance.NextSyncVal = this.Status();
@@ -121,9 +141,12 @@ namespace OutlookGoogleCalendarSync.Sync {
         private PushSyncTimer() {
             ResetLastRun();
             ogcsTimer = new Timer();
-            this.Tag = "PushTimer";
-            this.Interval = 2 * 60000;
-            this.Tick += new EventHandler(ogcsPushTimer_Tick);
+            ogcsTimer.Tag = "PushTimer";
+            ogcsTimer.Interval = 2 * 60000;
+            ogcsTimer.Tick += new EventHandler(ogcsPushTimer_Tick);
+            Forms.Main.Instance.NextSyncVal = Forms.Main.Instance.ActiveCalendarProfile.SyncInterval == 0 
+                ? "Push Sync Active" 
+                : Forms.Main.Instance.NextSyncVal = Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText.Replace(" + Push", "") + " + Push";
         }
 
         /// <summary>
@@ -169,10 +192,10 @@ namespace OutlookGoogleCalendarSync.Sync {
         public void Switch(Boolean enable) {
             if (enable && !this.Enabled) {
                 ResetLastRun();
-                this.Start();
+                ogcsTimer.Start();
                 if (Forms.Main.Instance.ActiveCalendarProfile.SyncInterval == 0) Forms.Main.Instance.NextSyncVal = "Push Sync Active";
-            } else if (!enable && this.Enabled) {
-                this.Stop();
+            } else if (!enable && ogcsTimer.Enabled) {
+                ogcsTimer.Stop();
                 Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.SetNextSync();
             }
         }

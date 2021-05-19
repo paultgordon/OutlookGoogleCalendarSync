@@ -454,7 +454,7 @@ namespace OutlookGoogleCalendarSync {
             if (OutlookOgcs.CustomProperty.Exists(ai, OutlookOgcs.CustomProperty.MetadataId.gEventID)) {
                 String googleIdValue = OutlookOgcs.CustomProperty.Get(ai, OutlookOgcs.CustomProperty.MetadataId.gEventID);
                 String googleCalValue = OutlookOgcs.CustomProperty.Get(ai, OutlookOgcs.CustomProperty.MetadataId.gCalendarId);
-                if (googleCalValue == null || googleCalValue == Settings.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id) {
+                if (googleCalValue == null || googleCalValue == Forms.Main.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id) {
                     Event ev = GoogleOgcs.Calendar.Instance.GetCalendarEntry(googleIdValue);
                     if (ev != null) {
                         events.Add(ev);
@@ -465,7 +465,7 @@ namespace OutlookGoogleCalendarSync {
             }
             if (!haveMatchingEv) {
                 events = GoogleOgcs.Calendar.Instance.GetCalendarEntriesInRange(ai.Start.Date, ai.Start.Date.AddDays(1));
-                if (Settings.Instance.ActiveCalendarProfile.SyncDirection != Sync.Direction.GoogleToOutlook) {
+                if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection != Sync.Direction.GoogleToOutlook) {
                     List<AppointmentItem> ais = new List<AppointmentItem>();
                     ais.Add(ai);
                     GoogleOgcs.Calendar.Instance.ReclaimOrphanCalendarEntries(ref events, ref ais, neverDelete: true);
@@ -589,7 +589,7 @@ namespace OutlookGoogleCalendarSync {
                                     aiExcp = (AppointmentItem)OutlookOgcs.Calendar.ReleaseObject(aiExcp);
                                 }
                             
-                                if (oExcp_currDate < Settings.Instance.ActiveCalendarProfile.SyncStart.Date || oExcp_currDate > Settings.Instance.ActiveCalendarProfile.SyncEnd.Date) {
+                                if (oExcp_currDate < Forms.Main.Instance.ActiveCalendarProfile.SyncStart.Date || oExcp_currDate > Forms.Main.Instance.ActiveCalendarProfile.SyncEnd.Date) {
                                     log.Fine("Exception is" + logDeleted + " outside date range being synced: " + oExcp_currDate.Date.ToString("dd/MM/yyyy"));
                                     continue;
                                 }
@@ -601,7 +601,7 @@ namespace OutlookGoogleCalendarSync {
                                         log.Debug("It is deleted in Google, so cannot compare items.");
                                         if (!oIsDeleted) {
                                             log.Warn("Outlook is NOT deleted though - a mismatch has occurred somehow!");
-                                            String syncDirectionTip = (Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional) ? "<br/><i>Ensure you <b>first</b> set OGCS to one-way sync O->G.</i>" : "";
+                                            String syncDirectionTip = (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional) ? "<br/><i>Ensure you <b>first</b> set OGCS to one-way sync O->G.</i>" : "";
                                             Forms.Main.Instance.Console.Update(OutlookOgcs.Calendar.GetEventSummary(ai) + "<br/>" +
                                                 "The occurrence on " + oExcp.OriginalDate.ToShortDateString() + " does not exist in Google, but does in Outlook. " +
                                                 "The suggested fix is to delete the entire series in Google and let OGCS recreate it." + syncDirectionTip, Console.Markup.warning);

@@ -154,7 +154,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             try {
                 //For backward compatibility, always default to key names with no set number appended
                 if (calendarKeys.Count == 0 ||
-                    (calendarKeys.Count == 1 && calendarKeys.ContainsKey(calendarKeyName) && calendarKeys[calendarKeyName] == Settings.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id))
+                    (calendarKeys.Count == 1 && calendarKeys.ContainsKey(calendarKeyName) && calendarKeys[calendarKeyName] == Forms.Main.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id))
                 {
                     maxSet = -1;
                     return returnVal;
@@ -169,7 +169,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         if (matches[0].Groups[1].Value != "")
                             appendedNos = Convert.ToInt16(matches[0].Groups[1].Value);
                         if (appendedNos - maxSet == 1) maxSet = appendedNos;
-                        if (kvp.Value == Settings.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id)
+                        if (kvp.Value == Forms.Main.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id)
                             returnSet = (matches[0].Groups[1].Value == "") ? "0" : matches[0].Groups[1].Value;
                     }
                 }
@@ -210,9 +210,9 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 ups = ai.UserProperties;
                 prop = ups.Find(searchKey);
                 if (searchId == MetadataId.gCalendarId)
-                    return (prop != null && prop.Value.ToString() == Settings.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id);
+                    return (prop != null && prop.Value.ToString() == Forms.Main.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id);
                 else {
-                    return (prop != null && Get(ai, MetadataId.gCalendarId) == Settings.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id);
+                    return (prop != null && Get(ai, MetadataId.gCalendarId) == Forms.Main.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id);
                 }
             } catch {
                 return false;
@@ -232,7 +232,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         /// Add the Google event IDs into Outlook appointment.
         /// </summary>
         public static void AddGoogleIDs(ref AppointmentItem ai, Event ev) {
-            Add(ref ai, MetadataId.gCalendarId, Settings.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id);
+            Add(ref ai, MetadataId.gCalendarId, Forms.Main.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id);
             Add(ref ai, MetadataId.gEventID, ev.Id);
             LogProperties(ai, log4net.Core.Level.Debug);
         }

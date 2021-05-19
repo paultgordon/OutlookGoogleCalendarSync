@@ -123,7 +123,7 @@ namespace OutlookGoogleCalendarSync {
             XElement xe = null;
             XElement xeProfile = null;
             try {
-                if (Settings.Instance.GetProfileType(settingStore) == Settings.ProfileType.Calendar) {
+                if (Settings.GetProfileType(settingStore) == Settings.ProfileType.Calendar) {
                     //It's a Calendar setting
                     SettingsStore.Calendar calSettings = settingStore as SettingsStore.Calendar;
                     XElement xeCalendars = settingsXE.Elements(ns + "Calendars").First();

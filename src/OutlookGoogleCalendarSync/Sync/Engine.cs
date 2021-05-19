@@ -25,8 +25,16 @@ namespace OutlookGoogleCalendarSync.Sync {
 
         public Engine() { }
 
-        public SyncTimer OgcsTimer;
-        public Sync.PushSyncTimer OgcsPushTimer;
+        /// <summary>The time the current sync started</summary>
+        private DateTime syncStarted { get; set; }
+
+        public DateTime? NextSyncDate { get {
+                DateTime? retVal = null;
+                retVal = Settings.Instance.Calendars.Min(c => c.OgcsTimer.NextSyncDate_New);
+                return retVal;
+            }
+        }
+
         private AbortableBackgroundWorker bwSync;
         public Boolean SyncingNow {
             get {
@@ -52,19 +60,19 @@ namespace OutlookGoogleCalendarSync.Sync {
 
         #region Push Sync
         public void RegisterForPushSync() {
-            if (Settings.Instance.ActiveCalendarProfile.SyncDirection != Sync.Direction.GoogleToOutlook) {
+            if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection != Sync.Direction.GoogleToOutlook) {
                 log.Debug("Create the timer for the push synchronisation");
-                if (OgcsPushTimer == null)
-                    OgcsPushTimer = Sync.PushSyncTimer.Instance;
-                if (!OgcsPushTimer.Running())
-                    OgcsPushTimer.Switch(true);
+                if (Forms.Main.Instance.ActiveCalendarProfile.OgcsPushTimer == null)
+                    Forms.Main.Instance.ActiveCalendarProfile.OgcsPushTimer = Sync.PushSyncTimer.Instance;
+                if (!Forms.Main.Instance.ActiveCalendarProfile.OgcsPushTimer.Running())
+                    Forms.Main.Instance.ActiveCalendarProfile.OgcsPushTimer.Switch(true);
             }
         }
 
         public void DeregisterForPushSync() {
             log.Info("Stop monitoring for Outlook appointment changes...");
-            if (OgcsPushTimer != null && OgcsPushTimer.Running())
-                OgcsPushTimer.Switch(false);
+            if (Forms.Main.Instance.ActiveCalendarProfile.OgcsPushTimer != null && Forms.Main.Instance.ActiveCalendarProfile.OgcsPushTimer.Running())
+                Forms.Main.Instance.ActiveCalendarProfile.OgcsPushTimer.Switch(false);
         }
         #endregion
 
@@ -94,7 +102,7 @@ namespace OutlookGoogleCalendarSync.Sync {
                         return;
                     }
                     if (Control.ModifierKeys == Keys.Shift) {
-                        if (Settings.Instance.ActiveCalendarProfile.SyncDirection == Direction.Bidirectional) {
+                        if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection == Direction.Bidirectional) {
                             MessageBox.Show("Forcing a full sync is not allowed whilst in 2-way sync mode.\r\nPlease temporarily chose a direction to sync in first.",
                                 "2-way full sync not allowed", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                             return;
@@ -127,9 +135,12 @@ namespace OutlookGoogleCalendarSync.Sync {
             Forms.Main mainFrm = Forms.Main.Instance;
             Forms.Main.Instance.ActiveCalendarProfile.LogSettings();
             try {
+                this.syncStarted = DateTime.Now;
+                String cacheNextSync = Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText;
+
                 mainFrm.Console.Clear();
 
-                if (Settings.Instance.ActiveCalendarProfile.UseGoogleCalendar == null || string.IsNullOrEmpty(Settings.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id)) {
+                if (Forms.Main.Instance.ActiveCalendarProfile.UseGoogleCalendar == null || string.IsNullOrEmpty(Forms.Main.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id)) {
                     MessageBox.Show("You need to select a Google Calendar first on the 'Settings' tab.");
                     return;
                 }
@@ -144,7 +155,7 @@ namespace OutlookGoogleCalendarSync.Sync {
                 }
                 //Check if Outlook is Online
                 try {
-                    if (OutlookOgcs.Calendar.Instance.IOutlook.Offline() && Settings.Instance.ActiveCalendarProfile.AddAttendees) {
+                    if (OutlookOgcs.Calendar.Instance.IOutlook.Offline() && Forms.Main.Instance.ActiveCalendarProfile.AddAttendees) {
                         mainFrm.Console.Update("<p>You have selected to sync attendees but Outlook is currently offline.</p>" +
                             "<p>Either put Outlook online or do not sync attendees.</p>", Console.Markup.error, notifyBubble: true);
                         setNextSync(false, updateSyncSchedule);
@@ -165,9 +176,9 @@ namespace OutlookGoogleCalendarSync.Sync {
                 StringBuilder sb = new StringBuilder();
                 Forms.Main.Instance.Console.BuildOutput("Sync version: " + System.Windows.Forms.Application.ProductVersion, ref sb);
                 Forms.Main.Instance.Console.BuildOutput((ManualForceCompare ? "Full s" : "S") + "ync started at " + syncStarted.ToString(), ref sb);
-                Forms.Main.Instance.Console.BuildOutput("Syncing from " + Settings.Instance.ActiveCalendarProfile.SyncStart.ToShortDateString() +
-                    " to " + Settings.Instance.ActiveCalendarProfile.SyncEnd.ToShortDateString(), ref sb);
-                mainFrm.Console.BuildOutput(Settings.Instance.ActiveCalendarProfile.SyncDirection.Name, ref sb);
+                Forms.Main.Instance.Console.BuildOutput("Syncing from " + Forms.Main.Instance.ActiveCalendarProfile.SyncStart.ToShortDateString() +
+                    " to " + Forms.Main.Instance.ActiveCalendarProfile.SyncEnd.ToShortDateString(), ref sb);
+                mainFrm.Console.BuildOutput(Forms.Main.Instance.ActiveCalendarProfile.SyncDirection.Name, ref sb);
 
                 //Make the clock emoji show the right time
                 int minsPastHour = DateTime.Now.Minute;
@@ -175,7 +186,7 @@ namespace OutlookGoogleCalendarSync.Sync {
                 sb.Insert(0, ":clock" + DateTime.Now.ToString("hh").TrimStart('0') + (minsPastHour == 00 ? "" : "30") + ":");
                 mainFrm.Console.Update(sb);
 
-                if (Settings.Instance.ActiveCalendarProfile.OutlookPush) DeregisterForPushSync();
+                if (Forms.Main.Instance.ActiveCalendarProfile.OutlookPush) DeregisterForPushSync();
 
                 SyncResult syncResult = SyncResult.Fail;
                 int failedAttempts = 0;
@@ -274,9 +285,10 @@ namespace OutlookGoogleCalendarSync.Sync {
                 } else if (syncResult == SyncResult.AutoRetry) {
                     consecutiveSyncFails++;
                     mainFrm.Console.Update("Sync encountered a problem and did not complete successfully.<br/>" + consecutiveSyncFails + " consecutive syncs failed.", Console.Markup.error, notifyBubble: true);
-                    if (Sync.Engine.Instance.OgcsTimer.NextSyncDate != null && Sync.Engine.Instance.OgcsTimer.NextSyncDate > DateTime.Now) {
-                        log.Debug("The next sync has already been set (likely through auto retry for new quota at 8AM GMT): " + Forms.Main.Instance.NextSyncVal);
+                    if (Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDate != null && Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDate > DateTime.Now) {
+                        log.Debug("The next sync has already been set (likely through auto retry for new quota at 8AM GMT): " + Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText);
                         updateSyncSchedule = false;
+                        cacheNextSync = Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText;
                     }
                 } else {
                     consecutiveSyncFails += failedAttempts;
@@ -291,7 +303,7 @@ namespace OutlookGoogleCalendarSync.Sync {
                 mainFrm.NotificationTray.UpdateItem("sync", "&Sync Now");
                 if (Settings.Instance.MuteClickSounds) Console.MuteClicks(false);
 
-                if (Settings.Instance.ActiveCalendarProfile.OutlookPush) RegisterForPushSync();
+                if (Forms.Main.Instance.ActiveCalendarProfile.OutlookPush) RegisterForPushSync();
 
                 //Release Outlook reference if GUI not available. 
                 //Otherwise, tasktray shows "another program is using outlook" and it doesn't send and receive emails
@@ -307,10 +319,11 @@ namespace OutlookGoogleCalendarSync.Sync {
         /// If updateSyncSchedule is false, this value persists.</param>
         private void setNextSync(Boolean syncedOk, Boolean updateNextSchedule) {
             if (syncedOk) {
-                Forms.Main.Instance.ActiveCalendarProfile.LastSyncDate = Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDate;
+                Forms.Main.Instance.ActiveCalendarProfile.LastSyncDate = syncStarted;
             }
             if (updateNextSchedule) {
                 if (syncedOk) {
+                    Forms.Main.Instance.ActiveCalendarProfile.LastSyncDate = syncStarted;
                     Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.SetNextSync();
                 } else {
                     if (Forms.Main.Instance.ActiveCalendarProfile.SyncInterval != 0) {
@@ -381,7 +394,7 @@ namespace OutlookGoogleCalendarSync.Sync {
                         (ex.Message.Contains("daily Calendar quota has been exhausted") || OGCSexception.GetErrorCode(ex.InnerException) == "0x80131500")) {
                         //Already rescheduled to run again once new quota available, so just set to retry.
                         ex.Data.Add("OGCS", "ERROR: Unable to connect to the Google calendar. " +
-                            (Settings.Instance.ActiveCalendarProfile.SyncInterval == 0 ? "Please try again." : "OGCS will automatically try again when new API quota is available."));
+                            (Forms.Main.Instance.ActiveCalendarProfile.SyncInterval == 0 ? "Please try again." : "OGCS will automatically try again when new API quota is available."));
                         OGCSexception.LogAsFail(ref ex);
                     }
                     throw;
@@ -443,7 +456,7 @@ namespace OutlookGoogleCalendarSync.Sync {
                         continue;
                     }
 
-                    if (ai.IsRecurring && ai.Start.Date < Settings.Instance.ActiveCalendarProfile.SyncStart && ai.End.Date < Settings.Instance.ActiveCalendarProfile.SyncStart) {
+                    if (ai.IsRecurring && ai.Start.Date < Forms.Main.Instance.ActiveCalendarProfile.SyncStart && ai.End.Date < Forms.Main.Instance.ActiveCalendarProfile.SyncStart) {
                         //We won't bother getting Google master event if appointment is yearly reoccurring in a month outside of sync range
                         //Otherwise, every sync, the master event will have to be retrieved, compared, concluded nothing's changed (probably) = waste of API calls
                         RecurrencePattern oPattern = ai.GetRecurrencePattern();
@@ -451,8 +464,8 @@ namespace OutlookGoogleCalendarSync.Sync {
                             if (oPattern.RecurrenceType.ToString().Contains("Year")) {
                                 log.Fine("It's an annual event.");
                                 Boolean monthInSyncRange = false;
-                                DateTime monthMarker = Settings.Instance.ActiveCalendarProfile.SyncStart;
-                                while (Convert.ToInt32(monthMarker.ToString("yyyyMM")) <= Convert.ToInt32(Settings.Instance.ActiveCalendarProfile.SyncEnd.ToString("yyyyMM"))
+                                DateTime monthMarker = Forms.Main.Instance.ActiveCalendarProfile.SyncStart;
+                                while (Convert.ToInt32(monthMarker.ToString("yyyyMM")) <= Convert.ToInt32(Forms.Main.Instance.ActiveCalendarProfile.SyncEnd.ToString("yyyyMM"))
                                     && !monthInSyncRange) {
                                     if (monthMarker.Month == ai.Start.Month) {
                                         monthInSyncRange = true;
@@ -496,16 +509,16 @@ namespace OutlookGoogleCalendarSync.Sync {
 
                 Boolean success = true;
                 String bubbleText = "";
-                if (Settings.Instance.ActiveCalendarProfile.ExtirpateOgcsMetadata) {
+                if (Forms.Main.Instance.ActiveCalendarProfile.ExtirpateOgcsMetadata) {
                     return extirpateCustomProperties(outlookEntries, googleEntries);
                 }
 
-                if (Settings.Instance.ActiveCalendarProfile.SyncDirection != Direction.GoogleToOutlook) {
+                if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection != Direction.GoogleToOutlook) {
                     success = outlookToGoogle(outlookEntries, googleEntries, ref bubbleText);
                     if (CancellationPending) return SyncResult.UserCancelled;
                 }
                 if (!success) return SyncResult.Fail;
-                if (Settings.Instance.ActiveCalendarProfile.SyncDirection != Direction.OutlookToGoogle) {
+                if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection != Direction.OutlookToGoogle) {
                     if (bubbleText != "") bubbleText += "\r\n";
                     success = googleToOutlook(googleEntries, outlookEntries, ref bubbleText);
                     if (CancellationPending) return SyncResult.UserCancelled;
@@ -523,7 +536,7 @@ namespace OutlookGoogleCalendarSync.Sync {
 
         private Boolean outlookToGoogle(List<AppointmentItem> outlookEntries, List<Event> googleEntries, ref String bubbleText) {
             log.Debug("Synchronising from Outlook to Google.");
-            if (Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional)
+            if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional)
                 Forms.Main.Instance.Console.Update("Syncing " + Sync.Direction.OutlookToGoogle.Name, Console.Markup.syncDirection, newLine: false);
 
             //  Make copies of each list of events (Not strictly needed)
@@ -563,7 +576,7 @@ namespace OutlookGoogleCalendarSync.Sync {
             console.Update(sb, Console.Markup.info, logit: true);
 
             //Protect against very first syncs which may trample pre-existing non-Outlook events in Google
-            if (!Settings.Instance.ActiveCalendarProfile.DisableDelete && !Settings.Instance.ActiveCalendarProfile.ConfirmOnDelete &&
+            if (!Forms.Main.Instance.ActiveCalendarProfile.DisableDelete && !Forms.Main.Instance.ActiveCalendarProfile.ConfirmOnDelete &&
                 googleEntriesToBeDeleted.Count == googleEntries.Count && googleEntries.Count > 0) {
                 if (MessageBox.Show("All Google events are going to be deleted. Do you want to allow this?" +
                     "\r\nNote, " + googleEntriesToBeCreated.Count + " events will then be created.", "Confirm mass deletion",
@@ -632,7 +645,7 @@ namespace OutlookGoogleCalendarSync.Sync {
                 bubbleText = "Google: " + googleEntriesToBeCreated.Count + " created; " +
                     googleEntriesToBeDeleted.Count + " deleted; " + entriesUpdated + " updated";
 
-                if (Settings.Instance.ActiveCalendarProfile.SyncDirection == Direction.OutlookToGoogle) {
+                if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection == Direction.OutlookToGoogle) {
                     while (entriesToBeCompared.Count() > 0) {
                         OutlookOgcs.Calendar.ReleaseObject(entriesToBeCompared.Keys.Last());
                         entriesToBeCompared.Remove(entriesToBeCompared.Keys.Last());
@@ -644,7 +657,7 @@ namespace OutlookGoogleCalendarSync.Sync {
 
         private Boolean googleToOutlook(List<Event> googleEntries, List<AppointmentItem> outlookEntries, ref String bubbleText) {
             log.Debug("Synchronising from Google to Outlook.");
-            if (Settings.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional)
+            if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection == Sync.Direction.Bidirectional)
                 Forms.Main.Instance.Console.Update("Syncing " + Sync.Direction.GoogleToOutlook.Name, Console.Markup.syncDirection, newLine: false);
 
             List<Event> outlookEntriesToBeCreated = new List<Event>(googleEntries);
@@ -675,7 +688,7 @@ namespace OutlookGoogleCalendarSync.Sync {
             console.Update(sb, Console.Markup.info, logit: true);
 
             //Protect against very first syncs which may trample pre-existing non-Google events in Outlook
-            if (!Settings.Instance.ActiveCalendarProfile.DisableDelete && !Settings.Instance.ActiveCalendarProfile.ConfirmOnDelete &&
+            if (!Forms.Main.Instance.ActiveCalendarProfile.DisableDelete && !Forms.Main.Instance.ActiveCalendarProfile.ConfirmOnDelete &&
                 outlookEntriesToBeDeleted.Count == outlookEntries.Count && outlookEntries.Count > 0) {
                 if (MessageBox.Show("All Outlook events are going to be deleted. Do you want to allow this?" +
                     "\r\nNote, " + outlookEntriesToBeCreated.Count + " events will then be created.", "Confirm mass deletion",

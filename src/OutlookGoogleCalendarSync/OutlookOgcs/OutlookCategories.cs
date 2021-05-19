@@ -33,7 +33,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         public void Get(Outlook.Application oApp, Outlook.MAPIFolder calendar) {
             Outlook.Store store = null;
             try {
-                if (Settings.Instance.ActiveCalendarProfile.OutlookService == OutlookOgcs.Calendar.Service.DefaultMailbox)
+                if (Forms.Main.Instance.ActiveCalendarProfile.OutlookService == OutlookOgcs.Calendar.Service.DefaultMailbox)
                     this.categories = oApp.Session.Categories;
                 else {
                     try {
@@ -57,7 +57,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             foreach (String catName in getNames()) {
                 clb.Items.Add(catName);
             }
-            foreach (String cat in Settings.Instance.ActiveCalendarProfile.Categories) {
+            foreach (String cat in Forms.Main.Instance.ActiveCalendarProfile.Categories) {
                 try {
                     clb.SetItemChecked(clb.Items.IndexOf(cat), true);
                 } catch { /* Category "cat" no longer exists */ }

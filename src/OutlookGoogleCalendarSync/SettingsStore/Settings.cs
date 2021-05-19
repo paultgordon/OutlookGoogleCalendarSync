@@ -83,7 +83,7 @@ namespace OutlookGoogleCalendarSync {
             apiLimit_lastHit = DateTime.Parse("01-Jan-2000");
             GaccountEmail = "";
 
-            List<SettingsStore.Calendar>Calendars = new List<SettingsStore.Calendar>();
+            List<SettingsStore.Calendar> Calendars = new List<SettingsStore.Calendar>();
             Calendars.Add(new SettingsStore.Calendar());
 
             MuteClickSounds = false;
@@ -107,7 +107,7 @@ namespace OutlookGoogleCalendarSync {
             donor = false;
             hideSplashScreen = false;
             suppressSocialPopup = false;
-            
+
             completedSyncs = 0;
             VerboseOutput = true;
         }
@@ -317,7 +317,7 @@ namespace OutlookGoogleCalendarSync {
         public Boolean Loading() {
             StackTrace stackTrace = new StackTrace();
             foreach (StackFrame frame in stackTrace.GetFrames().Reverse()) {
-                if (new String[] {"Load","isNewVersion"}.Contains(frame.GetMethod().Name)) {
+                if (new String[] { "Load", "isNewVersion" }.Contains(frame.GetMethod().Name)) {
                     return true;
                 }
             }
@@ -327,19 +327,19 @@ namespace OutlookGoogleCalendarSync {
         public void LogSettings() {
             log.Info(ConfigFile);
             log.Info("OUTLOOK SETTINGS:-");
-            log.Info("  Service: "+ Calendars[0].OutlookService.ToString());
+            log.Info("  Service: " + Calendars[0].OutlookService.ToString());
             if (Calendars[0].OutlookService == OutlookOgcs.Calendar.Service.SharedCalendar) {
                 log.Info("  Shared Calendar: " + Calendars[0].SharedCalendar);
             } else {
                 log.Info("  Mailbox/FolderStore Name: " + Calendars[0].MailboxName);
             }
-            log.Info("  Calendar: "+ (Calendars[0].UseOutlookCalendar.Name=="Calendar"?"Default ":"") + Calendars[0].UseOutlookCalendar.Name);
+            log.Info("  Calendar: " + (Calendars[0].UseOutlookCalendar.Name == "Calendar" ? "Default " : "") + Calendars[0].UseOutlookCalendar.Name);
             log.Info("  Category Filter: " + Calendars[0].CategoriesRestrictBy.ToString());
             log.Info("  Categories: " + String.Join(",", Calendars[0].Categories.ToArray()));
             log.Info("  Only Responded Invites: " + Calendars[0].OnlyRespondedInvites);
             log.Info("  Filter String: " + Calendars[0].OutlookDateFormat);
             log.Info("  GAL Blocked: " + Calendars[0].OutlookGalBlocked);
-            
+
             log.Info("GOOGLE SETTINGS:-");
             log.Info("  Calendar: " + (Calendars[0].UseGoogleCalendar == null ? "" : Calendars[0].UseGoogleCalendar.ToString()));
             log.Info("  Personal API Keys: " + UsingPersonalAPIkeys());
@@ -351,10 +351,10 @@ namespace OutlookGoogleCalendarSync {
             log.Info("  API attendee limit last reached: " + APIlimit_lastHit);
             log.Info("  Assigned API key: " + AssignedClientIdentifier);
             log.Info("  Cloak Email: " + Calendars[0].CloakEmail);
-        
+
             log.Info("SYNC OPTIONS:-");
             log.Info(" How");
-            log.Info("  SyncDirection: "+ Calendars[0].SyncDirection.Name);
+            log.Info("  SyncDirection: " + Calendars[0].SyncDirection.Name);
             log.Info("  MergeItems: " + Calendars[0].MergeItems);
             log.Info("  DisableDelete: " + Calendars[0].DisableDelete);
             log.Info("  ConfirmOnDelete: " + Calendars[0].ConfirmOnDelete);
@@ -375,7 +375,7 @@ namespace OutlookGoogleCalendarSync {
                 }
             }
             log.Info(" When");
-            log.Info("  DaysInThePast: "+ Calendars[0].DaysInThePast);
+            log.Info("  DaysInThePast: " + Calendars[0].DaysInThePast);
             log.Info("  DaysInTheFuture:" + Calendars[0].DaysInTheFuture);
             log.Info("  SyncInterval: " + Calendars[0].SyncInterval);
             log.Info("  SyncIntervalUnit: " + Calendars[0].SyncIntervalUnit);
@@ -389,7 +389,7 @@ namespace OutlookGoogleCalendarSync {
             log.Info("    UseGoogleDefaultReminder: " + Calendars[0].UseGoogleDefaultReminder);
             log.Info("    UseOutlookDefaultReminder: " + Calendars[0].UseOutlookDefaultReminder);
             log.Info("    ReminderDND: " + Calendars[0].ReminderDND + " (" + Calendars[0].ReminderDNDstart.ToString("HH:mm") + "-" + Calendars[0].ReminderDNDend.ToString("HH:mm") + ")");
-            
+
             log.Info("PROXY:-");
             log.Info("  Type: " + Proxy.Type);
             if (Proxy.BrowserUserAgent != Proxy.DefaultBrowserAgent)
@@ -400,11 +400,11 @@ namespace OutlookGoogleCalendarSync {
                 log.Info("  Authentication Required: " + Proxy.AuthenticationRequired);
                 log.Info("  UserName: " + Proxy.UserName);
                 log.Info("  Password: " + (string.IsNullOrEmpty(Proxy.Password) ? "" : "*********"));
-            } 
-        
+            }
+
             log.Info("APPLICATION BEHAVIOUR:-");
             log.Info("  ShowBubbleTooltipWhenSyncing: " + ShowBubbleTooltipWhenSyncing);
-            log.Info("  StartOnStartup: " + StartOnStartup + "; DelayedStartup: "+ StartupDelay.ToString());
+            log.Info("  StartOnStartup: " + StartOnStartup + "; DelayedStartup: " + StartupDelay.ToString());
             log.Info("  HideSplashScreen: " + (UserIsBenefactor() ? HideSplashScreen.ToString() : "N/A"));
             log.Info("  SuppressSocialPopup: " + (UserIsBenefactor() ? SuppressSocialPopup.ToString() : "N/A"));
             log.Info("  StartInTray: " + StartInTray);
@@ -418,7 +418,7 @@ namespace OutlookGoogleCalendarSync {
             log.Info("  MuteClickSounds: " + MuteClickSounds);
             //To pick up from settings.xml file:
             //((log4net.Repository.Hierarchy.Hierarchy)log.Logger.Repository).Root.Level.Name);
-            log.Info("  Logging Level: "+ LoggingLevel);
+            log.Info("  Logging Level: " + LoggingLevel);
             log.Info("  Error Reporting: " + CloudLogging ?? "Undefined");
 
             log.Info("ABOUT:-");
@@ -426,18 +426,29 @@ namespace OutlookGoogleCalendarSync {
             log.Info("  Skip Version: " + SkipVersion);
             log.Info("  Subscribed: " + Subscribed.ToString("dd-MMM-yyyy"));
             log.Info("  Timezone Database: " + TimezoneDB.Instance.Version);
-            
+
             log.Info("ENVIRONMENT:-");
             log.Info("  Current Locale: " + System.Globalization.CultureInfo.CurrentCulture.Name);
-            log.Info("  Short Date Format: "+ System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern);
-            log.Info("  Short Time Format: "+ System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.ShortTimePattern);
-            log.Info("  Completed Syncs: "+ CompletedSyncs);
+            log.Info("  Short Date Format: " + System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern);
+            log.Info("  Short Time Format: " + System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.ShortTimePattern);
+            log.Info("  Completed Syncs: " + CompletedSyncs);
         }
 
         public static void configureLoggingLevel(string logLevel) {
             log.Info("Logging level configured to '" + logLevel + "'");
             ((log4net.Repository.Hierarchy.Hierarchy)LogManager.GetRepository()).Root.Level = log.Logger.Repository.LevelMap[logLevel];
             ((log4net.Repository.Hierarchy.Hierarchy)LogManager.GetRepository()).RaiseConfigurationChanged(EventArgs.Empty);
+        }
+
+        public enum ProfileType {
+            Calendar,
+            Unknown
+        }
+        public static ProfileType GetProfileType(Object settingsStore) {
+            switch (settingsStore.GetType().ToString()) {
+                case "SettingsStore.Calendar": return ProfileType.Calendar; //.ToString();
+            }
+            return ProfileType.Unknown;
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using Google.Apis.Calendar.v3.Data;
-using log4net;
+﻿using log4net;
 using Microsoft.Office.Interop.Outlook;
 using System;
 using System.Collections.Generic;
@@ -40,10 +39,7 @@ namespace OutlookGoogleCalendarSync.Forms {
             NotificationTray = new NotificationTray(this.trayIcon);
 
             log.Debug("Initialise the timer(s) for the auto synchronisation");
-            Settings.Instance.Calendars.ForEach(cal => cal.InitialiseTimer());
-
-            //Set up listener for Outlook calendar changes
-            if (ActiveCalendarProfile.OutlookPush) Sync.Engine.Instance.RegisterForPushSync();
+            Settings.Instance.Calendars.ForEach(cal => { cal.InitialiseTimer(); cal.RegisterForPushSync(); });
 
             if (Settings.Instance.StartInTray) {
                 this.CreateHandle();
@@ -124,6 +120,7 @@ namespace OutlookGoogleCalendarSync.Forms {
             #endregion
 
             #region Profile
+            log.Debug("Loading profiles.");
             foreach (SettingsStore.Calendar calendar in Settings.Instance.Calendars) {
                 ddProfile.Items.Add(calendar._ProfileName);
             }
@@ -344,8 +341,16 @@ namespace OutlookGoogleCalendarSync.Forms {
                 #region Google box
                 tbConnectedAcc.Text = string.IsNullOrEmpty(Settings.Instance.GaccountEmail) ? "Not connected" : Settings.Instance.GaccountEmail;
                 if (profile.UseGoogleCalendar != null && profile.UseGoogleCalendar.Id != null) {
-                    cbGoogleCalendars.Items.Add(profile.UseGoogleCalendar);
-                    cbGoogleCalendars.SelectedIndex = 0;
+                    foreach (GoogleCalendarListEntry cle in this.cbGoogleCalendars.Items) {
+                        if (cle.Id == profile.UseGoogleCalendar.Id) {
+                            this.cbGoogleCalendars.SelectedItem = cle;
+                            break;
+                        }
+                    }
+                    if (cbGoogleCalendars.SelectedIndex == -1 || (cbGoogleCalendars.SelectedItem as GoogleCalendarListEntry).Id != profile.UseGoogleCalendar.Id) {
+                        cbGoogleCalendars.Items.Add(profile.UseGoogleCalendar);
+                        cbGoogleCalendars.SelectedIndex = cbGoogleCalendars.Items.Count - 1;
+                    }
                     tbClientID.ReadOnly = true;
                     tbClientSecret.ReadOnly = true;
                 } else {
@@ -840,7 +845,7 @@ namespace OutlookGoogleCalendarSync.Forms {
         /// <summary>
         /// The calendar settings profile currently displayed in the GUI.
         /// </summary>
-        public SettingsStore.Calendar ActiveCalendarProfile;
+        public SettingsStore.Calendar ActiveCalendarProfile { get; internal set; }
 
         private void ddProfile_SelectedIndexChanged(object sender, EventArgs e) {
             foreach (SettingsStore.Calendar cal in Settings.Instance.Calendars) {
@@ -1117,7 +1122,7 @@ namespace OutlookGoogleCalendarSync.Forms {
                 calendars.Sort((x, y) => (x.Sorted()).CompareTo(y.Sorted()));
                 foreach (GoogleCalendarListEntry mcle in calendars) {
                     cbGoogleCalendars.Items.Add(mcle);
-                    if (cbGoogleCalendars.SelectedIndex == -1 && mcle.Id == ActiveCalendarProfile.UseGoogleCalendar.Id)
+                    if (cbGoogleCalendars.SelectedIndex == -1 && mcle.Id == ActiveCalendarProfile.UseGoogleCalendar?.Id)
                         cbGoogleCalendars.SelectedItem = mcle;
                 }
                 if (cbGoogleCalendars.SelectedIndex == -1 ) {
@@ -1262,7 +1267,7 @@ namespace OutlookGoogleCalendarSync.Forms {
                 tbTargetCalendar.Enabled = false;
             }
             if (ActiveCalendarProfile.SyncDirection == Sync.Direction.GoogleToOutlook) {
-                Sync.Engine.Instance.DeregisterForPushSync();
+                ActiveCalendarProfile.DeregisterForPushSync();
                 this.cbOutlookPush.Checked = false;
                 this.cbOutlookPush.Enabled = false;
                 this.cbReminderDND.Visible = false;
@@ -1453,8 +1458,8 @@ namespace OutlookGoogleCalendarSync.Forms {
             ActiveCalendarProfile.OutlookPush = cbOutlookPush.Checked;
             if (this.Visible) {
                 if (tbInterval.Value != 0) tbMinuteOffsets_ValueChanged(null, null);
-                if (cbOutlookPush.Checked) Sync.Engine.Instance.RegisterForPushSync();
-                else Sync.Engine.Instance.DeregisterForPushSync();
+                if (cbOutlookPush.Checked) ActiveCalendarProfile.RegisterForPushSync();
+                else ActiveCalendarProfile.DeregisterForPushSync();
                 NotificationTray.UpdateAutoSyncItems();
             }
         }

@@ -18,11 +18,6 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             setDefaults();
         }
 
-        public void InitialiseTimer() {
-            log.Debug("Creating the calendar timer for auto synchronisation on profile '" + this._ProfileName + "'");
-            OgcsTimer = new Sync.SyncTimer(this.LastSyncDate);
-        }
-
         //Default values before loading from xml and attribute not yet serialized
         [OnDeserializing]
         void OnDeserializing(StreamingContext context) {
@@ -155,7 +150,6 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
                 if (!Settings.Instance.Loading()) {
                     XMLManager.ExportElement(this, "LastSyncDate", value, Settings.ConfigFile);
                     Forms.Main.Instance.LastSyncVal = LastSyncDateText;
-                    this.OgcsTimer.LastSyncDate = lastSyncDate;
                 }
             }
         }
@@ -170,7 +164,32 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
 
             log.Debug("Changing active settings profile '" + this._ProfileName + "'.");
             Forms.Main.Instance.ActiveCalendarProfile = this;
+            Forms.Main.Instance.UpdateGUIsettings_Profile();
         }
+
+        public void InitialiseTimer() {
+            log.Debug("Creating the calendar timer for auto synchronisation on profile '" + this._ProfileName + "'");
+            OgcsTimer = new Sync.SyncTimer(this);
+        }
+
+        #region Push Sync
+        public void RegisterForPushSync() {
+            if (this.SyncDirection == Sync.Direction.GoogleToOutlook || !this.OutlookPush) return;
+
+            log.Info("Creating the calendar timer for the push synchronisation on profile '" + this._ProfileName + "'");
+            if (this.OgcsPushTimer == null)
+                this.OgcsPushTimer = Sync.PushSyncTimer.Instance;
+            if (!this.OgcsPushTimer.Running())
+                this.OgcsPushTimer.Switch(true);
+        }
+
+        public void DeregisterForPushSync() {
+            log.Info("Stop monitoring for Outlook appointment changes on profile '" + this._ProfileName + "'");
+            if (this.OgcsPushTimer != null && this.OgcsPushTimer.Running())
+                this.OgcsPushTimer.Switch(false);
+        }
+        #endregion
+
 
         public void LogSettings() {
             log.Info("CALENDAR SYNC SETTINGS");

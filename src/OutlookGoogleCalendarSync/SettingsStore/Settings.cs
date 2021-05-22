@@ -442,13 +442,25 @@ namespace OutlookGoogleCalendarSync {
 
         public enum ProfileType {
             Calendar,
+            Global,
             Unknown
         }
         public static ProfileType GetProfileType(Object settingsStore) {
             switch (settingsStore.GetType().ToString()) {
-                case "SettingsStore.Calendar": return ProfileType.Calendar; //.ToString();
+                case "OutlookGoogleCalendarSync.Settings": return ProfileType.Global;
+                case "OutlookGoogleCalendarSync.SettingsStore.Calendar": return ProfileType.Calendar;
             }
+            log.Warn("Unknown profile type: " + settingsStore.GetType().ToString());
             return ProfileType.Unknown;
+        }
+
+        /// <summary>
+        /// Deregister all profiles from Push Sync
+        /// </summary>
+        public void DeregisterAllForPushSync() {
+            foreach(SettingsStore.Calendar calendar in Settings.Instance.Calendars) {
+                calendar.DeregisterForPushSync();
+            }
         }
     }
 }

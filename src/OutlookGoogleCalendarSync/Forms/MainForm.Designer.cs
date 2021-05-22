@@ -57,6 +57,7 @@
             this.lSettingInfo = new System.Windows.Forms.Label();
             this.tabAppSettings = new System.Windows.Forms.TabControl();
             this.tabProfile = new System.Windows.Forms.TabPage();
+            this.btProfileAction = new OutlookGoogleCalendarSync.Extensions.MenuButton();
             this.msProfileActions = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.miAddProfile = new System.Windows.Forms.ToolStripMenuItem();
             this.miDeleteProfile = new System.Windows.Forms.ToolStripMenuItem();
@@ -114,6 +115,7 @@
             this.pbExpandHow = new System.Windows.Forms.PictureBox();
             this.gbSyncOptions_How = new System.Windows.Forms.GroupBox();
             this.howMorePanel = new System.Windows.Forms.Panel();
+            this.ddCategoryColour = new OutlookGoogleCalendarSync.Extensions.ColourPicker();
             this.cbColour = new System.Windows.Forms.CheckBox();
             this.tbTargetCalendar = new System.Windows.Forms.DomainUpDown();
             this.tbCreatedItemsOnly = new System.Windows.Forms.DomainUpDown();
@@ -251,8 +253,6 @@
             this.btFbLike = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
             this.trayIcon = new System.Windows.Forms.NotifyIcon(this.components);
-            this.btProfileAction = new OutlookGoogleCalendarSync.Extensions.MenuButton();
-            this.ddCategoryColour = new OutlookGoogleCalendarSync.Extensions.ColourPicker();
             this.tabApp.SuspendLayout();
             this.tabPage_Sync.SuspendLayout();
             this.consolePanel.SuspendLayout();
@@ -326,10 +326,10 @@
             this.tabPage_Sync.Controls.Add(this.panelSyncNote);
             this.tabPage_Sync.Controls.Add(this.cbVerboseOutput);
             this.tabPage_Sync.Controls.Add(this.lNextSyncVal);
-            this.tabPage_Sync.Controls.Add(this.lLastSyncVal);
             this.tabPage_Sync.Controls.Add(this.lNextSync);
             this.tabPage_Sync.Controls.Add(this.lLastSync);
             this.tabPage_Sync.Controls.Add(this.bSyncNow);
+            this.tabPage_Sync.Controls.Add(this.lLastSyncVal);
             this.tabPage_Sync.Location = new System.Drawing.Point(4, 22);
             this.tabPage_Sync.Name = "tabPage_Sync";
             this.tabPage_Sync.Padding = new System.Windows.Forms.Padding(3);
@@ -415,37 +415,41 @@
             // 
             // lNextSyncVal
             // 
-            this.lNextSyncVal.Location = new System.Drawing.Point(271, 28);
+            this.lNextSyncVal.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lNextSyncVal.Location = new System.Drawing.Point(109, 28);
             this.lNextSyncVal.Name = "lNextSyncVal";
-            this.lNextSyncVal.Size = new System.Drawing.Size(216, 26);
+            this.lNextSyncVal.Size = new System.Drawing.Size(370, 14);
             this.lNextSyncVal.TabIndex = 4;
             this.lNextSyncVal.Text = "Unknown";
             // 
             // lLastSyncVal
             // 
-            this.lLastSyncVal.Location = new System.Drawing.Point(22, 28);
+            this.lLastSyncVal.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lLastSyncVal.Location = new System.Drawing.Point(109, 14);
             this.lLastSyncVal.Name = "lLastSyncVal";
-            this.lLastSyncVal.Size = new System.Drawing.Size(224, 26);
+            this.lLastSyncVal.Size = new System.Drawing.Size(370, 14);
             this.lLastSyncVal.TabIndex = 3;
             this.lLastSyncVal.Text = "N/A";
             // 
             // lNextSync
             // 
             this.lNextSync.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lNextSync.Location = new System.Drawing.Point(252, 14);
+            this.lNextSync.Location = new System.Drawing.Point(6, 28);
             this.lNextSync.Name = "lNextSync";
-            this.lNextSync.Size = new System.Drawing.Size(232, 14);
+            this.lNextSync.Size = new System.Drawing.Size(120, 14);
             this.lNextSync.TabIndex = 2;
-            this.lNextSync.Text = "Next scheduled:-";
+            this.lNextSync.Text = "Next scheduled:";
             // 
             // lLastSync
             // 
             this.lLastSync.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lLastSync.Location = new System.Drawing.Point(5, 14);
             this.lLastSync.Name = "lLastSync";
-            this.lLastSync.Size = new System.Drawing.Size(251, 14);
+            this.lLastSync.Size = new System.Drawing.Size(107, 14);
             this.lLastSync.TabIndex = 2;
-            this.lLastSync.Text = "Last successful:-";
+            this.lLastSync.Text = "Last successful:";
             // 
             // bSyncNow
             // 
@@ -513,10 +517,22 @@
             this.tabProfile.Controls.Add(this.ddProfile);
             this.tabProfile.Controls.Add(this.label34);
             this.tabProfile.Location = new System.Drawing.Point(79, 4);
-            this.tabProfile.Name = "tabProfiles";
+            this.tabProfile.Name = "tabProfile";
             this.tabProfile.Size = new System.Drawing.Size(392, 462);
             this.tabProfile.TabIndex = 4;
             this.tabProfile.Text = "  Profiles";
+            // 
+            // btProfileAction
+            // 
+            this.btProfileAction.Location = new System.Drawing.Point(175, 82);
+            this.btProfileAction.Menu = this.msProfileActions;
+            this.btProfileAction.Name = "btProfileAction";
+            this.btProfileAction.Size = new System.Drawing.Size(95, 23);
+            this.btProfileAction.TabIndex = 29;
+            this.btProfileAction.Text = "Add Profile";
+            this.btProfileAction.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btProfileAction.UseVisualStyleBackColor = true;
+            this.btProfileAction.Click += new System.EventHandler(this.btProfileAction_Click);
             // 
             // msProfileActions
             // 
@@ -1231,6 +1247,21 @@
             this.howMorePanel.Name = "howMorePanel";
             this.howMorePanel.Size = new System.Drawing.Size(353, 85);
             this.howMorePanel.TabIndex = 48;
+            // 
+            // ddCategoryColour
+            // 
+            this.ddCategoryColour.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.ddCategoryColour.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
+            this.ddCategoryColour.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.ddCategoryColour.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ddCategoryColour.FormattingEnabled = true;
+            this.ddCategoryColour.Location = new System.Drawing.Point(178, 58);
+            this.ddCategoryColour.Name = "ddCategoryColour";
+            this.ddCategoryColour.SelectedItem = null;
+            this.ddCategoryColour.Size = new System.Drawing.Size(158, 21);
+            this.ddCategoryColour.TabIndex = 43;
+            this.ddCategoryColour.SelectedIndexChanged += new System.EventHandler(this.ddCategoryColour_SelectedIndexChanged);
             // 
             // cbColour
             // 
@@ -3065,33 +3096,6 @@
             // 
             this.trayIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("trayIcon.Icon")));
             this.trayIcon.Text = "Outlook Google Calendar Sync";
-            // 
-            // btProfileAction
-            // 
-            this.btProfileAction.Location = new System.Drawing.Point(175, 82);
-            this.btProfileAction.Menu = this.msProfileActions;
-            this.btProfileAction.Name = "btProfileAction";
-            this.btProfileAction.Size = new System.Drawing.Size(95, 23);
-            this.btProfileAction.TabIndex = 29;
-            this.btProfileAction.Text = "Add Profile";
-            this.btProfileAction.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btProfileAction.UseVisualStyleBackColor = true;
-            this.btProfileAction.Click += new System.EventHandler(this.btProfileAction_Click);
-            // 
-            // ddCategoryColour
-            // 
-            this.ddCategoryColour.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.ddCategoryColour.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
-            this.ddCategoryColour.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.ddCategoryColour.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ddCategoryColour.FormattingEnabled = true;
-            this.ddCategoryColour.Location = new System.Drawing.Point(178, 58);
-            this.ddCategoryColour.Name = "ddCategoryColour";
-            this.ddCategoryColour.SelectedItem = null;
-            this.ddCategoryColour.Size = new System.Drawing.Size(158, 21);
-            this.ddCategoryColour.TabIndex = 43;
-            this.ddCategoryColour.SelectedIndexChanged += new System.EventHandler(this.ddCategoryColour_SelectedIndexChanged);
             // 
             // Main
             // 

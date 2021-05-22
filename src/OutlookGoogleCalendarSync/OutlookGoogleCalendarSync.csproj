@@ -300,6 +300,7 @@
     <Compile Include="GoogleOgcs\Authenticator.cs" />
     <Compile Include="GoogleOgcs\EventAttendee.cs" />
     <Compile Include="OutlookOgcs\ExplorerWatcher.cs" />
+    <Compile Include="Sync\Calendar.cs" />
     <Compile Include="Sync\Engine.cs" />
     <Compile Include="TimezoneDB.cs" />
     <Compile Include="NotificationTray.cs" />

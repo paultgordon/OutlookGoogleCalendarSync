@@ -5,7 +5,7 @@ using System.Windows.Forms;
 namespace OutlookGoogleCalendarSync.Sync {
     public class SyncTimer : Timer {
         private static readonly ILog log = LogManager.GetLogger(typeof(SyncTimer));
-        private Timer ogcsTimer;
+        private Object owningProfile;
         
         public DateTime LastSyncDate { internal get; set; }
 
@@ -27,7 +27,7 @@ namespace OutlookGoogleCalendarSync.Sync {
         public DateTime? NextSyncDate {
             get {
                 try {
-                    if ("Inactive;Push Sync Active;In progress...".Contains(Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText) || !ogcsTimer.Enabled) {
+                    if ("Inactive;Push Sync Active;In progress...".Contains(Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText) || !this.Enabled) {
                         return null;
                     } else {
                         return DateTime.ParseExact(Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText.Replace(" + Push", ""),
@@ -44,25 +44,26 @@ namespace OutlookGoogleCalendarSync.Sync {
         }
         public String NextSyncDateText { get; internal set; }
         
-        public SyncTimer(DateTime lastSync) {
-            ogcsTimer = new Timer();
+        public SyncTimer(Object owningProfile) {
+            this.owningProfile = owningProfile;
             this.Tag = "AutoSyncTimer";
             this.Tick += new EventHandler(ogcsTimer_Tick);
 
             //Refresh synchronizations (last and next)
-            this.LastSyncDate = lastSync;
-            //owner.LastSyncDate = Forms.Main.Instance.ActiveCalendarProfile.LastSyncDate;
+            this.LastSyncDate = this.LastSyncDate;
             SetNextSync(getResyncInterval());
         }
 
         private void ogcsTimer_Tick(object sender, EventArgs e) {
             if (Forms.ErrorReporting.Instance.Visible) return;
+
             log.Debug("Scheduled sync triggered.");
 
-            Forms.Main frm = Forms.Main.Instance;
-            frm.NotificationTray.ShowBubbleInfo("Autosyncing calendars: " + Forms.Main.Instance.ActiveCalendarProfile.SyncDirection.Name + "...");
             if (!Sync.Engine.Instance.SyncingNow) {
-                frm.Sync_Click(sender, null);
+                Sync.Engine.Instance.ActiveProfile = this.owningProfile;
+                if (Settings.GetProfileType(this.owningProfile) == Settings.ProfileType.Calendar) 
+                    Forms.Main.Instance.NotificationTray.ShowBubbleInfo("Autosyncing calendars: " + (Engine.Instance.ActiveProfile as SettingsStore.Calendar).SyncDirection.Name + "...");
+                Forms.Main.Instance.Sync_Click(sender, null);
             } else {
                 log.Debug("Busy syncing already. Rescheduled for 5 mins time.");
                 SetNextSync(5, fromNow: true);

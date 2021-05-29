@@ -1,6 +1,7 @@
 ﻿using log4net;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 
 namespace OutlookGoogleCalendarSync.SettingsStore {
@@ -41,6 +42,8 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             //Google
             UseGoogleCalendar = new GoogleCalendarListEntry();
             CloakEmail = true;
+            ExcludeDeclinedInvites = true;
+            ExcludeGoals = true;
 
             //Sync Options
             SyncDirection = Sync.Direction.OutlookToGoogle;
@@ -59,6 +62,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             ReminderDNDstart = DateTime.Now.Date.AddHours(22);
             ReminderDNDend = DateTime.Now.Date.AddDays(1).AddHours(6);
             AddAttendees = false;
+            MaxAttendees = 200;
             AddColours = false;
             MergeItems = true;
             DisableDelete = true;
@@ -67,9 +71,12 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             CreatedItemsOnly = true;
             SetEntriesPrivate = false;
             SetEntriesAvailable = false;
+            AvailabilityStatus = Microsoft.Office.Interop.Outlook.OlBusyStatus.olFree.ToString();
             SetEntriesColour = false;
             SetEntriesColourValue = Microsoft.Office.Interop.Outlook.OlCategoryColor.olCategoryColorNone.ToString();
             SetEntriesColourName = "None";
+            SetEntriesColourGoogleId = "0";
+            ColourMaps = new ColourMappingDictionary();
             Obfuscation = new Obfuscate();
             
             ExtirpateOgcsMetadata = false;
@@ -88,6 +95,8 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         [DataMember] public OutlookCalendarListEntry UseOutlookCalendar { get; set; }
         [DataMember] public RestrictBy CategoriesRestrictBy { get; set; }
         [DataMember] public List<string> Categories { get; set; }
+        /// <summary>Only allow Outlook to have one category assigned</summary>
+        [DataMember] public Boolean SingleCategoryOnly { get; set; }
         [DataMember] public Boolean OnlyRespondedInvites { get; set; }
         [DataMember] public string OutlookDateFormat { get; set; }
         private Boolean outlookGalBlocked;
@@ -102,6 +111,8 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         #region Google
         [DataMember] public GoogleCalendarListEntry UseGoogleCalendar { get; set; }
         [DataMember] public Boolean CloakEmail { get; set; }
+        [DataMember] public Boolean ExcludeDeclinedInvites { get; set; }
+        [DataMember] public Boolean ExcludeGoals { get; set; }
         #endregion
         #region Sync Options
         //Main
@@ -123,6 +134,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         [DataMember] public DateTime ReminderDNDstart { get; set; }
         [DataMember] public DateTime ReminderDNDend { get; set; }
         [DataMember] public bool AddAttendees { get; set; }
+        [DataMember] public int MaxAttendees { get; set; }
         [DataMember] public bool AddColours { get; set; }
         [DataMember] public bool MergeItems { get; set; }
         [DataMember] public bool DisableDelete { get; set; }
@@ -131,9 +143,24 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         [DataMember] public Boolean CreatedItemsOnly { get; set; }
         [DataMember] public bool SetEntriesPrivate { get; set; }
         [DataMember] public bool SetEntriesAvailable { get; set; }
+        [DataMember] public String AvailabilityStatus { get; set; }
         [DataMember] public bool SetEntriesColour { get; set; }
+
+        /// <summary>Set all Outlook appointments to this OlCategoryColor</summary>
         [DataMember] public String SetEntriesColourValue { get; set; }
+        /// <summary>Set all Outlook appointments to this custom category name</summary>
         [DataMember] public String SetEntriesColourName { get; set; }
+        /// <summary>Set all Google events to this colour ID</summary>
+        [DataMember] public String SetEntriesColourGoogleId { get; set; }
+        [DataMember]
+        public ColourMappingDictionary ColourMaps { get; private set; }
+        [CollectionDataContract(
+            ItemName = "ColourMap",
+            KeyName = "OutlookCategoryName",
+            ValueName = "GoogleColourId",
+            Namespace = "http://schemas.datacontract.org/2004/07/OutlookGoogleCalendarSync"
+        )]
+        public class ColourMappingDictionary : Dictionary<String, String> { }
 
         //Obfuscation
         [DataMember] public Obfuscate Obfuscation { get; set; }
@@ -164,7 +191,9 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
 
             log.Debug("Changing active settings profile '" + this._ProfileName + "'.");
             Forms.Main.Instance.ActiveCalendarProfile = this;
-            Forms.Main.Instance.UpdateGUIsettings_Profile();
+
+            if (Forms.Main.Instance.Visible) 
+                Forms.Main.Instance.UpdateGUIsettings_Profile();
         }
 
         public void InitialiseTimer() {
@@ -174,19 +203,19 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
 
         #region Push Sync
         public void RegisterForPushSync() {
-            if (this.SyncDirection == Sync.Direction.GoogleToOutlook || !this.OutlookPush) return;
+            if (!this.OutlookPush || this.SyncDirection.Id == Sync.Direction.GoogleToOutlook.Id) return;
 
             log.Info("Creating the calendar timer for the push synchronisation on profile '" + this._ProfileName + "'");
             if (this.OgcsPushTimer == null)
-                this.OgcsPushTimer = Sync.PushSyncTimer.Instance;
+                this.OgcsPushTimer = Sync.PushSyncTimer.Instance(this);
             if (!this.OgcsPushTimer.Running())
-                this.OgcsPushTimer.Switch(true);
+                this.OgcsPushTimer.Activate(true);
         }
 
         public void DeregisterForPushSync() {
             log.Info("Stop monitoring for Outlook appointment changes on profile '" + this._ProfileName + "'");
             if (this.OgcsPushTimer != null && this.OgcsPushTimer.Running())
-                this.OgcsPushTimer.Switch(false);
+                this.OgcsPushTimer.Activate(false);
         }
         #endregion
 
@@ -201,7 +230,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             } else {
                 log.Info("  Mailbox/FolderStore Name: " + MailboxName);
             }
-            log.Info("  Calendar: " + (UseOutlookCalendar.Name == "Calendar" ? "Default " : "") + UseOutlookCalendar.Name);
+            log.Info("  Calendar: " + (UseOutlookCalendar.Name == "Calendar" ? "Default " : "") + UseOutlookCalendar.ToString());
             log.Info("  Category Filter: " + CategoriesRestrictBy.ToString());
             log.Info("  Categories: " + String.Join(",", Categories.ToArray()));
             log.Info("  Only Responded Invites: " + OnlyRespondedInvites);
@@ -209,9 +238,9 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             log.Info("  GAL Blocked: " + OutlookGalBlocked);
 
             log.Info("GOOGLE SETTINGS:-");
-            log.Info("  Calendar: " + (UseGoogleCalendar == null ? "" : UseGoogleCalendar.ToString()));
-            log.Info("  API attendee limit in effect: " + Settings.Instance.APIlimit_inEffect);
-            log.Info("  API attendee limit last reached: " + Settings.Instance.APIlimit_lastHit);
+            log.Info("  Calendar: " + (UseGoogleCalendar == null ? "" : UseGoogleCalendar.ToString(true)));
+            log.Info("  Exclude Declined Invites: " + ExcludeDeclinedInvites);
+            log.Info("  Exclude Goals: " + ExcludeGoals);
             log.Info("  Cloak Email: " + CloakEmail);
 
             log.Info("SYNC OPTIONS:-");
@@ -221,17 +250,26 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             log.Info("  DisableDelete: " + DisableDelete);
             log.Info("  ConfirmOnDelete: " + ConfirmOnDelete);
             log.Info("  SetEntriesPrivate: " + SetEntriesPrivate);
-            log.Info("  SetEntriesAvailable: " + SetEntriesAvailable);
+            log.Info("  SetEntriesAvailable: " + SetEntriesAvailable + (SetEntriesAvailable ? "; " + AvailabilityStatus : ""));
             log.Info("  SetEntriesColour: " + SetEntriesColour + (SetEntriesColour ? "; " + SetEntriesColourValue + "; \"" + SetEntriesColourName + "\"" : ""));
             if ((SetEntriesPrivate || SetEntriesAvailable || SetEntriesColour) && SyncDirection == Sync.Direction.Bidirectional) {
                 log.Info("    TargetCalendar: " + TargetCalendar.Name);
                 log.Info("    CreatedItemsOnly: " + CreatedItemsOnly);
             }
+            if (ColourMaps.Count > 0) {
+                log.Info("  Custom Colour/Category Mapping:-");
+                if (OutlookOgcs.Factory.OutlookVersionName == OutlookOgcs.Factory.OutlookVersionNames.Outlook2003)
+                    log.Fail("    Using Outlook2003 - categories not supported, although mapping exists");
+                else
+                    ColourMaps.ToList().ForEach(c => log.Info("    " + OutlookOgcs.Calendar.Categories.OutlookColour(c.Key) + ":" + c.Key + " <=> " +
+                        c.Value + ":" + GoogleOgcs.EventColour.Palette.GetColourName(c.Value)));
+            }
+            log.Info("  SingleCategoryOnly: " + SingleCategoryOnly);
             log.Info("  Obfuscate Words: " + Obfuscation.Enabled);
             if (Obfuscation.Enabled) {
-                if (Forms.Main.Instance.ActiveCalendarProfile.Obfuscation.FindReplace.Count == 0) log.Info("    No regex defined.");
+                if (Obfuscation.FindReplace.Count == 0) log.Info("    No regex defined.");
                 else {
-                    foreach (FindReplace findReplace in Forms.Main.Instance.ActiveCalendarProfile.Obfuscation.FindReplace) {
+                    foreach (FindReplace findReplace in Obfuscation.FindReplace) {
                         log.Info("    '" + findReplace.find + "' -> '" + findReplace.replace + "'");
                     }
                 }
@@ -245,7 +283,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             log.Info(" What");
             log.Info("  AddLocation: " + AddLocation);
             log.Info("  AddDescription: " + AddDescription + "; OnlyToGoogle: " + AddDescription_OnlyToGoogle);
-            log.Info("  AddAttendees: " + AddAttendees);
+            log.Info("  AddAttendees: " + AddAttendees + " <" + MaxAttendees);
             log.Info("  AddColours: " + AddColours);
             log.Info("  AddReminders: " + AddReminders);
             log.Info("    UseGoogleDefaultReminder: " + UseGoogleDefaultReminder);

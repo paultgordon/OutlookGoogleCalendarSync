@@ -36,7 +36,8 @@ namespace OutlookGoogleCalendarSync.Sync {
         public DateTime? NextSyncDate { get {
                 DateTime? retVal = null;
                 foreach (SettingsStore.Calendar cal in Settings.Instance.Calendars) {
-                    retVal = cal.OgcsTimer.NextSyncDate < (retVal ?? DateTime.MaxValue) ? cal.OgcsTimer.NextSyncDate : retVal;
+                    if (cal.OgcsTimer.NextSyncDate != null)
+                        retVal = cal.OgcsTimer.NextSyncDate < (retVal ?? DateTime.MaxValue) ? cal.OgcsTimer.NextSyncDate : retVal;
                 }
                 return retVal;
             }
@@ -90,13 +91,13 @@ namespace OutlookGoogleCalendarSync.Sync {
                     log.Info("Manual sync requested.");
                     if (SyncingNow) {
                         log.Info("Already busy syncing, cannot accept another sync request.");
-                        MessageBox.Show("A sync is already running. Please wait for it to complete and then try again.", "Sync already running", MessageBoxButtons.OK, MessageBoxIcon.Hand);
+                        OgcsMessageBox.Show("A sync is already running. Please wait for it to complete and then try again.", "Sync already running", MessageBoxButtons.OK, MessageBoxIcon.Hand);
                         return;
                     }
                     Sync.Engine.Instance.ActiveProfile = Forms.Main.Instance.ActiveCalendarProfile;
                     if (Control.ModifierKeys == Keys.Shift) {
                         if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection == Direction.Bidirectional) {
-                            MessageBox.Show("Forcing a full sync is not allowed whilst in 2-way sync mode.\r\nPlease temporarily chose a direction to sync in first.",
+                            OgcsMessageBox.Show("Forcing a full sync is not allowed whilst in 2-way sync mode.\r\nPlease temporarily chose a direction to sync in first.",
                                 "2-way full sync not allowed", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                             return;
                         }
@@ -114,20 +115,28 @@ namespace OutlookGoogleCalendarSync.Sync {
                         bwSync.CancelAsync();
                     } else {
                         Forms.Main.Instance.Console.Update("Repeated cancellation requested - forcefully aborting sync!", Console.Markup.warning);
-                        try {
-                            bwSync.Abort();
-                            bwSync.Dispose();
-                            bwSync = null;
-                        } catch { }
+                        AbortSync();
                     }
                 }
             }
         }
 
+        public void AbortSync() {
+            try {
+                bwSync.Abort();
+                bwSync.Dispose();
+                bwSync = null;
+            } catch (System.Exception ex) {
+                OGCSexception.Analyse(ex);
+            } finally {
+                log.Warn("Sync thread forcefully aborted!");
+            }
+        }
+
         public void Start(Boolean updateSyncSchedule = true) {
             if (Settings.GetProfileType(this.ActiveProfile) == Settings.ProfileType.Calendar) {
-                Sync.Engine.Calendar calendar = new Sync.Engine.Calendar(this.ActiveProfile as SettingsStore.Calendar);
-                calendar.StartSync(updateSyncSchedule);
+                Sync.Engine.Calendar.Instance.Profile = this.ActiveProfile as SettingsStore.Calendar;
+                Sync.Engine.Calendar.Instance.StartSync(updateSyncSchedule);
             }
         }
 

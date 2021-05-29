@@ -11,6 +11,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
         private static readonly ILog log = LogManager.GetLogger(typeof(ErrorReporting));
 
         public static Boolean Initialised = true;
+        public static Boolean ErrorOccurred = false;
         private static String templateCredFile = Path.Combine(System.Windows.Forms.Application.StartupPath, "ErrorReportingTemplate.json");
         private static String credFile = Path.Combine(System.Windows.Forms.Application.StartupPath, "ErrorReporting.json");
 
@@ -30,7 +31,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             log.Debug("Getting credential attributes");
             try {
                 try {
-                    html = new System.Net.WebClient().DownloadString(cloudCredsURL);
+                    html = new Extensions.OgcsWebClient().DownloadString(cloudCredsURL);
                     html = html.Replace("\n", "");
                 } catch (System.Exception ex) {
                     log.Error("Failed to retrieve data: " + ex.Message);
@@ -61,7 +62,14 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                     }
                     newLines.Add(line);
                 }
-                File.WriteAllLines(credFile, newLines.ToArray());
+                try {
+                    File.WriteAllLines(credFile, newLines.ToArray());
+                } catch (System.IO.IOException ex) {
+                    if (OGCSexception.GetErrorCode(ex) == "0x80070020")
+                        log.Warn("ErrorReporting.json is being used by another process (perhaps multiple instances of OGCS are being started on system startup?)");
+                    else
+                        throw;
+                }
                 Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credFile);
 
             } catch (ApplicationException ex) {
@@ -70,7 +78,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
 
             //} catch (System.Exception ex) {
                 //Logging isn't initialised yet, so don't catch this error - let it crash out so user is aware and hopefully reports it!
-                //System.Windows.Forms.MessageBox.Show(ex.Message);
+                //System.Windows.Forms.OgcsMessageBox.Show(ex.Message);
                 //log.Debug("Failed to initialise error reporting.");
                 //OGCSexception.Analyse(ex);
             }

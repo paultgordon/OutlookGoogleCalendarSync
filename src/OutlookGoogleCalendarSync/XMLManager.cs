@@ -172,7 +172,7 @@ namespace OutlookGoogleCalendarSync {
             }
 
             //Sort the children if any exist
-            List<XElement> sortedChildren = source.Elements().OrderBy(e => e.Name.ToString()).ToList();
+            List<XElement> sortedChildren = source.Elements().OrderBy(e => e.Name.ToString(), StringComparer.Ordinal).ToList();
             if (source.HasElements) {
                 source.RemoveNodes();
                 sortedChildren.ForEach(c => c.Sort(bSortAttributes));

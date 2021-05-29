@@ -1,6 +1,110 @@
 | Release Notes |
 |:---|
 
+# v2.8.7.0 - Alpha
+
+**Enhancements**
+- Customisable attendee limit for sync
+- Set "No" as default for deletion prompts
+- Advanced hidden configuration option to disconnect from Outlook between syncs
+- For Push Sync, check Outlook is actually running
+
+**Bugfix**
+- Hide quota exhausted notification after correct amount of time
+- Get new Google access token if expiring imminently
+- Ensure milestone window is always responsive
+- Actually save calendar item if "force" flag is set
+- Download all delta install file(s) to allow for successful upgrade
+- Check if install files are already downloaded
+- Regression bug syncs every minute after manual sync, even with no schedule
+
+# v2.8.6.0 - Alpha
+
+**Enhancements**
+- Optionally exclude declined Google invitiations from sync
+- Additional colour sync setting to only sync single category to Outlook
+- Don't set Outlook category to default Google calendar colour (unless mapped)
+- Retrieve all Google calendars, not just first 30
+
+**Bugfix**
+- Outlook 2003: Retain recurring items starting before, but spanning sync date range
+- Cater for nothing being returned when getting Google item recurrences
+- Handle Google error code 410 [Gone]
+- Correctly delay next sync when quota exhausted
+- Google calendar colours in dropdown may be offset incorrectly by 1
+- Handle failure to get email address from Exchange meeting attendee
+- Fixed regression of network failure preventing future automated sync
+- Telemetry popup box every time OGCS starts in system tray
+- Default Google reminder errors if only email notification set on event
+
+# v2.8.5.0 - Alpha
+
+**Enhancements**
+- Improved detection of Outlook versions after 2016
+- Option to exclude sync of Google 'goals'
+- Option to set exact type of availablity in Outlook (eg Out of Office)
+- Sync deletion in Outlook on first two-way sync (not second)
+- Log exact code location of any errors
+- Log Google 500 errors as `FAIL` to avoid error reporting
+- Further masking of Outlook profile email address in log file
+
+**Bugfix**
+- Quota limit error updated to match changed Google error
+- Reclaim calendar entries in both Google _and_ Outlook at start of sync
+- Proper calculation of recurrence end time from organiser's local time
+- Compare recurrence rule if number of elements have changed
+- Compare attendee cloaked email addresses properly after config change
+- Handle configured category mappings for categories that no longer exist in Outlook
+- Don't error if log file deletion fails
+- Improved support for Outlook2003
+
+# v2.8.4.0 - Alpha
+
+**Enhancements**
+- Ability to specify custom maps between Google colours and Outlook categories
+- Detect movement of Outlook appointments into/out of sync window bounds
+- Improved detection of Outlook versions after 2016
+
+**Bugfix**
+- Broken upgrade mechanism (fixed from this release onwards)
+- Save timezone mappings on exit of config screen
+- Issue reading ErrorReporting.json file when starting multiple instances of OGCS
+- Silently reconnect to Outlook if disconnected and using Push Sync
+- Syncing Google reminder but none exists
+- Properly report Google API exception errors
+
+# v2.8.3.0 - Alpha
+
+**Enhancements**
+- Provision for custom timezone mapping when required for meeting organiser in different timezone
+- Handle when corporate policy/AV blocks access to current user's name in Outlook
+
+**Bugfix**
+- Handle mailboxes that have no Deleted Items folder
+- Check configured Outlook mailbox and calendar are stil available on startup
+- Properly detect sync direction when forcing attributes in target calendar
+- Only update category/colour if configured to
+- Don't attempt to sync colours for recurring series exceptions
+- Take into account DST for UTC offsets
+- Handle recurrence end dates with no time element
+- Ensure start/end Event values are populated
+- Encode CSVs to UTF8
+- Fix error reporting DLL reference
+
+# v2.8.2.0 - Alpha
+
+**Enhancements**
+- Use any configured proxy for _all_ web calls
+- New `/t` command line option to append custom text to application title
+- Don't attempt update of recurring Google series owned by another
+- Pop-up message boxes now associated with main application form
+- Improved feedback on API quota exhausted
+- Ability to disable telemetry
+
+**Bugfix**
+- Convert recurrence end date to local time
+- Error reporting DLLs updated
+
 # v2.8.1.0 - Alpha
 
 **Enhancements**

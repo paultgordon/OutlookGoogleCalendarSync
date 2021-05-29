@@ -1,6 +1,7 @@
 ﻿using log4net;
 using System;
 using System.ComponentModel;
+using System.Linq;
 
 namespace OutlookGoogleCalendarSync {
     class UserCancelledSyncException : System.Exception {
@@ -24,8 +25,18 @@ namespace OutlookGoogleCalendarSync {
             }
            
             log.ErrorOrFail(ex.GetType().FullName + ": " + ex.Message, logLevel);
+            String errorLocation = "; Location: ";
+            try {
+                errorLocation += ex.TargetSite.Name + "() in ";
+                System.Diagnostics.StackTrace st = new System.Diagnostics.StackTrace(ex, true);
+                String[] frameBits = st.GetFrame(0).ToString().Split('\\');
+                if (frameBits.Count() == 1) throw new Exception();
+                errorLocation += frameBits.LastOrDefault().Trim();
+            } catch {
+                errorLocation += "<Unknown File>";
+            }
             int errorCode = getErrorCode(ex);
-            log.ErrorOrFail("Code: 0x" + errorCode.ToString("X8") + ";" + errorCode.ToString(), logLevel);
+            log.ErrorOrFail("Code: 0x" + errorCode.ToString("X8") + "," + errorCode.ToString() + errorLocation, logLevel);
 
             if (ex.InnerException != null) {
                 log.ErrorOrFail("InnerException:-", logLevel);
@@ -76,16 +87,19 @@ namespace OutlookGoogleCalendarSync {
             String instructions = "On the Settings > Google tab, please disconnect and re-authenticate your account.";
 
             log.Warn("Token response error: " + ex.Message);
-            if (ex.Error.Error == "access_denied")
+            if (ex.Error.Error == "access_denied") {
                 Forms.Main.Instance.Console.Update("Failed to obtain Calendar access from Google - it's possible your access has been revoked.<br/>" + instructions, Console.Markup.fail, notifyBubble: true);
+                LogAsFail(ref ex);
 
-            else if ("invalid_client;unauthorized_client".Contains(ex.Error.Error))
+            } else if ("invalid_client;unauthorized_client".Contains(ex.Error.Error)) {
                 Forms.Main.Instance.Console.Update("Invalid authentication token. Account requires reauthorising.\r\n" + instructions, Console.Markup.fail, notifyBubble: true);
+                LogAsFail(ref ex);
 
-            else if (ex.Error.Error == "invalid_grant")
+            } else if (ex.Error.Error == "invalid_grant") {
                 Forms.Main.Instance.Console.Update("Google has revoked your authentication token. Account requires reauthorising.<br/>" + instructions, Console.Markup.fail, notifyBubble: true);
+                LogAsFail(ref ex);
 
-            else {
+            } else {
                 log.Warn("Unknown web exception.");
                 Forms.Main.Instance.Console.UpdateWithError("Unable to communicate with Google. The following error occurred:", ex, notifyBubble: true);
             }
@@ -95,7 +109,10 @@ namespace OutlookGoogleCalendarSync {
         public static String FriendlyMessage(System.Exception ex) {
             if (ex is Google.GoogleApiException) {
                 Google.GoogleApiException gaex = ex as Google.GoogleApiException;
-                return gaex.Error.Message + " [" + gaex.Error.Code + "=" + gaex.HttpStatusCode + "]";
+                if (gaex.Error != null)
+                    return gaex.Error.Message + " [" + gaex.Error.Code + "=" + gaex.HttpStatusCode + "]";
+                else
+                    return gaex.Message + " [" + gaex.HttpStatusCode + "]";
             } else {
                 return ex.Message + (ex.InnerException != null && !(ex.InnerException is Google.GoogleApiException) ? "<br/>" + ex.InnerException.Message : "");
             }
@@ -126,6 +143,7 @@ namespace OutlookGoogleCalendarSync {
             LogAsFail(ref ex);
             return ex;
         }
+
         /// <summary>
         /// Capture this exception as log4net FAIL (not ERROR) when logged
         /// </summary>
@@ -136,6 +154,42 @@ namespace OutlookGoogleCalendarSync {
                 ex.Data.Add(LogAs, OGCSexception.LogLevel.FAIL);
         }
         
+        /// <summary>
+        /// Capture this exception as log4net FAIL (not ERROR) when logged
+        /// </summary>
+        public static void LogAsFail(ref System.Runtime.InteropServices.COMException ex) {
+            if (ex.Data.Contains(LogAs))
+                ex.Data[LogAs] = OGCSexception.LogLevel.FAIL;
+            else
+                ex.Data.Add(LogAs, OGCSexception.LogLevel.FAIL);
+        }
+        
+        /// <summary>
+        /// Capture this exception as log4net FAIL (not ERROR) when logged
+        /// </summary>
+        public static void LogAsFail(ref System.NullReferenceException ex) {
+            if (ex.Data.Contains(LogAs))
+                ex.Data[LogAs] = OGCSexception.LogLevel.FAIL;
+            else
+                ex.Data.Add(LogAs, OGCSexception.LogLevel.FAIL);
+        }
+
+        /// <summary>Capture this exception as log4net FAIL (not ERROR) when logged</summary>
+        public static void LogAsFail(ref Google.Apis.Auth.OAuth2.Responses.TokenResponseException ex) {
+            if (ex.Data.Contains(LogAs))
+                ex.Data[LogAs] = OGCSexception.LogLevel.FAIL;
+            else
+                ex.Data.Add(LogAs, OGCSexception.LogLevel.FAIL);
+        }
+
+        /// <summary>Capture this exception as log4net FAIL (not ERROR) when logged</summary>
+        public static void LogAsFail(ref Google.GoogleApiException ex) {
+            if (ex.Data.Contains(LogAs))
+                ex.Data[LogAs] = OGCSexception.LogLevel.FAIL;
+            else
+                ex.Data.Add(LogAs, OGCSexception.LogLevel.FAIL);
+        }
+
         /// <summary>
         /// Check if this exception has been set to log as log4net FAIL (not ERROR)
         /// </summary>

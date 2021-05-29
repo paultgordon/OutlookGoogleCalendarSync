@@ -108,9 +108,10 @@
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <FileAlignment>4096</FileAlignment>
-    <DebugType>None</DebugType>
+    <DebugType>pdbonly</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="ClickOnceToSquirrelMigrator, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -167,6 +168,10 @@
     </Reference>
     <Reference Include="Google.Cloud.Logging.Log4Net, Version=2.4.0.0, Culture=neutral, PublicKeyToken=185c282632e132a0, processorArchitecture=MSIL">
       <HintPath>lib\Google.Cloud.Logging.Log4Net.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Google.Cloud.Logging.Type, Version=2.0.0.0, Culture=neutral, PublicKeyToken=185c282632e132a0, processorArchitecture=MSIL">
+      <HintPath>lib\Google.Cloud.Logging.Type.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Google.Cloud.Logging.V2, Version=2.2.0.0, Culture=neutral, PublicKeyToken=185c282632e132a0, processorArchitecture=MSIL">
@@ -228,7 +233,7 @@
       <HintPath>lib\Squirrel\NuGet.Squirrel.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="SharpCompress, Version=0.23.0.0, Culture=neutral, PublicKeyToken=afb0a02973931d96, processorArchitecture=MSIL">
+    <Reference Include="SharpCompress, Version=0.20.0.0, Culture=neutral, PublicKeyToken=afb0a02973931d96, processorArchitecture=MSIL">
       <HintPath>lib\Squirrel\SharpCompress.dll</HintPath>
       <Private>True</Private>
     </Reference>
@@ -237,8 +242,8 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Squirrel, Version=1.9.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\Squirrel\Squirrel.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Deployment" />
@@ -262,6 +267,13 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Extensions\DateTime.cs" />
+    <Compile Include="Extensions\MessageBox.cs" />
+    <Compile Include="Extensions\NumericUpDown.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Extensions\WebClient.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Extensions\MenuButton.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -276,6 +288,18 @@
     </Compile>
     <Compile Include="Forms\Social.Designer.cs">
       <DependentUpon>Social.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ColourMap.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\ColourMap.Designer.cs">
+      <DependentUpon>ColourMap.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\TimezoneMap.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\TimezoneMap.Designer.cs">
+      <DependentUpon>TimezoneMap.cs</DependentUpon>
     </Compile>
     <Compile Include="GoogleOgcs\ErrorReporting.cs" />
     <Compile Include="GoogleOgcs\CustomProperty.cs" />
@@ -346,12 +370,23 @@
   <ItemGroup>
     <EmbeddedResource Include="Forms\ErrorReporting.resx">
       <DependentUpon>ErrorReporting.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\Social.resx">
       <DependentUpon>Social.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\ColourMap.resx">
+      <DependentUpon>ColourMap.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\TimezoneMap.resx">
+      <DependentUpon>TimezoneMap.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\UpdateInfo.resx">
       <DependentUpon>UpdateInfo.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>

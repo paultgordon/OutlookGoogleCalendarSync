@@ -40,11 +40,12 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 log.Info("Exchange connection mode: " + exchangeConnectionMode.ToString());
 
                 oNS = GetCurrentUser(oNS);
+                SettingsStore.Calendar profile = Settings.Instance.ProfileInPlay();
                 
-                if (!Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked && currentUserName == "Unknown") {
+                if (!profile.OutlookGalBlocked && currentUserName == "Unknown") {
                     log.Info("Current username is \"Unknown\"");
-                    if (Forms.Main.Instance.ActiveCalendarProfile.AddAttendees) {
-                        System.Windows.Forms.MessageBox.Show("It appears you do not have an Email Account configured in Outlook.\r\n" +
+                    if (profile.AddAttendees) {
+                        System.Windows.Forms.OgcsMessageBox.Show("It appears you do not have an Email Account configured in Outlook.\r\n" +
                             "You should set one up now (Tools > Email Accounts) to avoid problems syncing meeting attendees.",
                             "No Email Account Found", System.Windows.Forms.MessageBoxButtons.OK,
                             System.Windows.Forms.MessageBoxIcon.Warning);
@@ -56,7 +57,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
 
                 // Get the Calendar folders
                 useOutlookCalendar = getCalendarStore(oNS);
-                if (Forms.Main.Instance.IsHandleCreated) {
+                if (Forms.Main.Instance.IsHandleCreated && profile._ProfileName == Forms.Main.Instance.ActiveCalendarProfile._ProfileName) {
                     log.Fine("Resetting connection, so re-selecting calendar from GUI dropdown");
 
                     Forms.Main.Instance.cbOutlookCalendars.SelectedIndexChanged -= Forms.Main.Instance.cbOutlookCalendar_SelectedIndexChanged;
@@ -65,7 +66,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     //Select the right calendar
                     int c = 0;
                     foreach (KeyValuePair<String, MAPIFolder> calendarFolder in calendarFolders) {
-                        if (calendarFolder.Value.EntryID == Forms.Main.Instance.ActiveCalendarProfile.UseOutlookCalendar.Id) {
+                        if (calendarFolder.Value.EntryID == profile.UseOutlookCalendar.Id) {
                             Forms.Main.Instance.SetControlPropertyThreadSafe(Forms.Main.Instance.cbOutlookCalendars, "SelectedIndex", c);
                         }
                         c++;
@@ -88,8 +89,9 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             }
         }
         public void Disconnect(Boolean onlyWhenNoGUI = false) {
-            if (!onlyWhenNoGUI ||
-                (onlyWhenNoGUI && oApp.Explorers.Count == 0)) 
+            if (Settings.Instance.DisconnectOutlookBetweenSync ||
+                !onlyWhenNoGUI ||
+                (onlyWhenNoGUI && NoGUIexists()))
             {
                 log.Debug("De-referencing all Outlook application objects.");
                 try {
@@ -110,6 +112,35 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                 oApp = null;
                 GC.Collect();
             }
+        }
+
+        public Boolean NoGUIexists() {
+            Boolean retVal = (oApp == null);
+            if (!retVal) {
+                Explorers explorers = null;
+                try {
+                    explorers = oApp.Explorers;
+                    retVal = (explorers.Count == 0);
+                } catch (System.Exception) {
+                    if (System.Diagnostics.Process.GetProcessesByName("OUTLOOK").Count() == 0) {
+                        log.Fine("No running outlook.exe process found.");
+                        retVal = true;
+                    } else {
+                        OutlookOgcs.Calendar.AttachToOutlook(ref oApp, openOutlookOnFail: false);
+                        try {
+                            explorers = oApp.Explorers;
+                            retVal = (explorers.Count == 0);
+                        } catch {
+                            log.Warn("Failed to reattach to Outlook instance.");
+                            retVal = true;
+                        }
+                    }
+                } finally {
+                    explorers = (Explorers)OutlookOgcs.Calendar.ReleaseObject(explorers);
+                }
+            }
+            if (retVal) log.Fine("No Outlook GUI detected.");
+            return retVal;
         }
 
         public Folders Folders() { return folders; }
@@ -157,6 +188,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
             Recipient currentUser = null;
             try {
                 DateTime triggerOOMsecurity = DateTime.Now;
+                SettingsStore.Calendar profile = Settings.Instance.ProfileInPlay();
                 try {
                     currentUser = oNS.CurrentUser;
                     if (!Forms.Main.Instance.IsHandleCreated && (DateTime.Now - triggerOOMsecurity).TotalSeconds > 1) {
@@ -165,7 +197,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     }
                 } catch (System.Exception ex) {
                     OGCSexception.Analyse(ex);
-                    if (Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked) { //Fail fast
+                    if (profile.OutlookGalBlocked) { //Fail fast
                         log.Debug("Corporate policy is still blocking access to GAL.");
                         return oNS;
                     }
@@ -189,7 +221,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                                     log.Warn("Corporate policy or possibly anti-virus is blocking access to GAL.");
                                 } else OGCSexception.Analyse(ex2);
                                 log.Warn("OGCS is unable to obtain CurrentUser from Outlook.");
-                                Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked = true;
+                                profile.OutlookGalBlocked = true;
                                 return oNS;
                             }
                             OGCSexception.Analyse(ex2);
@@ -197,8 +229,8 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         delay++;
                     }
                 }
-                if (Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked) log.Debug("GAL is no longer blocked!");
-                Forms.Main.Instance.ActiveCalendarProfile.OutlookGalBlocked = false;
+                if (profile.OutlookGalBlocked) log.Debug("GAL is no longer blocked!");
+                profile.OutlookGalBlocked = false;
                 currentUserSMTP = GetRecipientEmail(currentUser);
                 currentUserName = currentUser.Name;
             } finally {
@@ -210,7 +242,8 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
 
         private MAPIFolder getCalendarStore(NameSpace oNS) {
             MAPIFolder defaultCalendar = null;
-            if (Forms.Main.Instance.ActiveCalendarProfile.OutlookService == OutlookOgcs.Calendar.Service.DefaultMailbox) {
+            SettingsStore.Calendar profile = Settings.Instance.ProfileInPlay();
+            if (profile.OutlookService == OutlookOgcs.Calendar.Service.DefaultMailbox) {
                 getDefaultCalendar(oNS, ref defaultCalendar);
             }
             log.Debug("Default Calendar folder: " + defaultCalendar.Name);
@@ -238,7 +271,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
 
             } catch (System.Exception ex) {
                 log.Error("Failed to get shared calendar from " + sharedURI + ". " + ex.Message);
-                MessageBox.Show("Could not find a shared calendar for '" + sharer.Name + "'.", "No shared calendar found",
+                OgcsMessageBox.Show("Could not find a shared calendar for '" + sharer.Name + "'.", "No shared calendar found",
                         MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return null;
             } finally {
@@ -249,20 +282,29 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         private void getDefaultCalendar(NameSpace oNS, ref MAPIFolder defaultCalendar) {
             log.Debug("Finding default Mailbox calendar folders");
             try {
-                Forms.Main.Instance.rbOutlookDefaultMB.CheckedChanged -= Forms.Main.Instance.rbOutlookDefaultMB_CheckedChanged;
-                Forms.Main.Instance.rbOutlookDefaultMB.Checked = true;
-                Forms.Main.Instance.ActiveCalendarProfile.OutlookService = OutlookOgcs.Calendar.Service.DefaultMailbox;
-                Forms.Main.Instance.rbOutlookDefaultMB.CheckedChanged += Forms.Main.Instance.rbOutlookDefaultMB_CheckedChanged;
+                SettingsStore.Calendar profile = Settings.Instance.ProfileInPlay();
+                Boolean updateGUI = profile._ProfileName == Forms.Main.Instance.ActiveCalendarProfile._ProfileName;
+                if (updateGUI) {
+                    Forms.Main.Instance.rbOutlookDefaultMB.CheckedChanged -= Forms.Main.Instance.rbOutlookDefaultMB_CheckedChanged;
+                    Forms.Main.Instance.rbOutlookDefaultMB.Checked = true;
+                }
+                profile.OutlookService = OutlookOgcs.Calendar.Service.DefaultMailbox;
+                if (updateGUI)
+                    Forms.Main.Instance.rbOutlookDefaultMB.CheckedChanged += Forms.Main.Instance.rbOutlookDefaultMB_CheckedChanged;
 
                 defaultCalendar = oNS.GetDefaultFolder(OlDefaultFolders.olFolderCalendar);
                 calendarFolders.Add("Default " + defaultCalendar.Name, defaultCalendar);
                 string excludeDeletedFolder = folders.Application.Session.GetDefaultFolder(OlDefaultFolders.olFolderDeletedItems).EntryID;
 
-                Forms.Main.Instance.lOutlookCalendar.BackColor = System.Drawing.Color.Yellow;
-                Forms.Main.Instance.lOutlookCalendar.Text = "Getting calendars";
+                if (updateGUI) {
+                    Forms.Main.Instance.lOutlookCalendar.BackColor = System.Drawing.Color.Yellow;
+                    Forms.Main.Instance.SetControlPropertyThreadSafe(Forms.Main.Instance.lOutlookCalendar, "Text", "Getting calendars");
+                }
                 findCalendars(((MAPIFolder)defaultCalendar.Parent).Folders, calendarFolders, excludeDeletedFolder, defaultCalendar);
-                Forms.Main.Instance.lOutlookCalendar.BackColor = System.Drawing.Color.White;
-                Forms.Main.Instance.lOutlookCalendar.Text = "Select calendar";
+                if (updateGUI) {
+                    Forms.Main.Instance.lOutlookCalendar.BackColor = System.Drawing.Color.White;
+                    Forms.Main.Instance.SetControlPropertyThreadSafe(Forms.Main.Instance.lOutlookCalendar, "Text", "Select calendar");
+                }
             } catch (System.Exception ex) {
                 OGCSexception.Analyse(ex, true);
                 throw;
@@ -294,17 +336,16 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                         findCalendars(folder.Folders, calendarFolders, excludeDeletedFolder, defaultCalendar);
                     }
                 } catch (System.Exception ex) {
-                    OGCSexception.Analyse(ex);
                     if (oApp.Session.ExchangeConnectionMode.ToString().Contains("Disconnected") ||
-                        ex.Message.StartsWith("Network problems are preventing connection to Microsoft Exchange.") ||
+                        OGCSexception.GetErrorCode(ex) == "0xC204011D" || ex.Message.StartsWith("Network problems are preventing connection to Microsoft Exchange.") ||
                         OGCSexception.GetErrorCode(ex, 0x000FFFFF) == "0x00040115") {
+                        log.Warn(ex.Message);
                         log.Info("Currently disconnected from Exchange - unable to retrieve MAPI folders.");
                         Forms.Main.Instance.ToolTips.SetToolTip(Forms.Main.Instance.cbOutlookCalendars,
                             "The Outlook calendar to synchonize with.\nSome may not be listed as you are currently disconnected.");
                     } else {
-                        log.Error("Failed to recurse MAPI folders.");
-                        log.Error(ex.Message);
-                        MessageBox.Show("A problem was encountered when searching for Outlook calendar folders.",
+                        OGCSexception.Analyse("Failed to recurse MAPI folders.", ex);
+                        OgcsMessageBox.Show("A problem was encountered when searching for Outlook calendar folders.\r\n" + ex.Message,
                             "Calendar Folders", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                 }
@@ -338,6 +379,33 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
                     }
                 }
             }
+        }
+
+        public List<Object> FilterItems(Items outlookItems, String filter) {
+            List<Object> restrictedItems = new List<Object>();
+            foreach (Object obj in outlookItems.Restrict(filter)) {
+                restrictedItems.Add(obj);
+            }
+
+            // Recurring items with start dates before the synced date range are excluded incorrectly - this retains them
+            List<Object> o2003recurring = new List<Object>();
+            try {
+                for (int i = 1; i <= outlookItems.Count; i++) {
+                    AppointmentItem ai = null;
+                    if (outlookItems[i] is AppointmentItem) {
+                        ai = outlookItems[i] as AppointmentItem;
+                        SettingsStore.Calendar profile = Settings.Instance.ProfileInPlay();
+                        if (ai.IsRecurring && ai.Start.Date < profile.SyncStart && ai.End.Date < profile.SyncStart)
+                            o2003recurring.Add(outlookItems[i]);
+                    }
+                }
+                log.Info(o2003recurring.Count + " recurring items successfully kept for Outlook 2003.");
+            } catch (System.Exception ex) {
+                OGCSexception.Analyse("Unable to iterate Outlook items.", ex);
+            }
+            restrictedItems.AddRange(o2003recurring);
+
+            return restrictedItems;
         }
 
         public void GetAppointmentByID(String entryID, out AppointmentItem ai) {

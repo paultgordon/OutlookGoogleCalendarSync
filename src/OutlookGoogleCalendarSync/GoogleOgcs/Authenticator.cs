@@ -90,7 +90,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             return provider;
         }
 
-        private async Task getAuthenticated(ClientSecrets cs) {
+        private async Task<bool> getAuthenticated(ClientSecrets cs) {
             log.Debug("Authenticating with Google calendar service...");
 
             FileDataStore tokenStore = new FileDataStore(Program.UserFilePath);
@@ -114,7 +114,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 if (ex.Error.Error == "access_denied") {
                     String noAuthGiven = "Sorry, but this application will not work if you don't allow it access to your Google Calendar :(";
                     log.Warn("User did not provide authorisation code. Sync will not be able to work.");
-                    MessageBox.Show(noAuthGiven, "Authorisation not given", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                    OgcsMessageBox.Show(noAuthGiven, "Authorisation not given", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                     throw new ApplicationException(noAuthGiven);
                 } else {
                     Forms.Main.Instance.Console.UpdateWithError("Unable to authenticate with Google. The following error occurred:", ex);
@@ -134,22 +134,51 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             }
 
             GoogleOgcs.Calendar.Instance.Service = new CalendarService(new Google.Apis.Services.BaseClientService.Initializer() { HttpClientInitializer = credential });
+            if (Settings.Instance.Proxy.Type == "Custom")
+                GoogleOgcs.Calendar.Instance.Service.HttpClient.DefaultRequestHeaders.Add("user-agent", Settings.Instance.Proxy.BrowserUserAgent);
 
-            if (credential.Token.IssuedUtc.AddSeconds(credential.Token.ExpiresInSeconds.Value) < DateTime.UtcNow.AddMinutes(-1)) {
+            if (credential.Token.IssuedUtc.AddSeconds(credential.Token.ExpiresInSeconds.Value) < DateTime.UtcNow.AddMinutes(1)) {
                 log.Debug("Access token needs refreshing.");
                 //This will happen automatically when using the calendar service
                 //But we need a valid token before we call getGaccountEmail() which doesn't use the service
-                try {
-                    GoogleOgcs.Calendar.Instance.Service.Settings.Get("useKeyboardShortcuts").Execute();
-                } catch (System.Exception ex) {
-                    if (ex is Google.Apis.Auth.OAuth2.Responses.TokenResponseException)
-                        OGCSexception.AnalyseTokenResponse(ex as Google.Apis.Auth.OAuth2.Responses.TokenResponseException, false);
-                    else {
-                        OGCSexception.Analyse(ex);
-                        Forms.Main.Instance.Console.Update("Unable to communicate with Google services.", Console.Markup.warning);
+                int backoff = 0;
+                while (backoff < Calendar.BackoffLimit) {
+                    try {
+                        GoogleOgcs.Calendar.Instance.Service.Settings.Get("useKeyboardShortcuts").Execute();
+                        break;
+                    } catch (Google.GoogleApiException ex) {
+                        switch (Calendar.HandleAPIlimits(ref ex, null)) {
+                            case Calendar.ApiException.throwException: throw;
+                            case Calendar.ApiException.freeAPIexhausted:
+                                OGCSexception.LogAsFail(ref ex);
+                                OGCSexception.Analyse(ex);
+                                System.ApplicationException aex = new System.ApplicationException(Calendar.Instance.SubscriptionInvite, ex);
+                                OGCSexception.LogAsFail(ref aex);
+                                authenticated = false;
+                                return authenticated;
+                        case Calendar.ApiException.backoffThenRetry:
+                                backoff++;
+                                if (backoff == Calendar.BackoffLimit) {
+                                    log.Fail("API limit backoff was not successful. Retrieving useKeyboardShortcuts setting failed.");
+                                    authenticated = false;
+                                    return authenticated;
+                                } else {
+                                    log.Warn("API rate limit reached. Backing off " + backoff + "sec before retry.");
+                                    System.Threading.Thread.Sleep(backoff * 1000);
+                                }
+                                break;
+                        }
+
+                    } catch (System.Exception ex) {
+                        if (ex is Google.Apis.Auth.OAuth2.Responses.TokenResponseException)
+                            OGCSexception.AnalyseTokenResponse(ex as Google.Apis.Auth.OAuth2.Responses.TokenResponseException, false);
+                        else {
+                            OGCSexception.Analyse(ex);
+                            Forms.Main.Instance.Console.Update("Unable to communicate with Google services. " + (ex.InnerException != null ? ex.InnerException.Message : ex.Message), Console.Markup.warning);
+                        }
+                        authenticated = false;
+                        return authenticated;
                     }
-                    authenticated = false;
-                    return;
                 }
                 log.Debug("Access token refreshed.");
             }
@@ -157,6 +186,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             getGaccountEmail(credential.Token.AccessToken);
             authenticated = true;
             Forms.Main.Instance.Console.Update("Handshake successful.", verbose: true);
+            return authenticated;
         }
 
         public void Reset(Boolean reauthorise = true) {
@@ -181,9 +211,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             String jsonString = "";
             log.Debug("Retrieving email address associated with Google account.");
             try {
-                System.Net.WebClient wc = new System.Net.WebClient();
-                wc.Headers.Add("user-agent", Settings.Instance.Proxy.BrowserUserAgent);
-                jsonString = wc.DownloadString("https://www.googleapis.com/oauth2/v2/userinfo?fields=email&access_token=" + accessToken);
+                jsonString = new Extensions.OgcsWebClient().DownloadString("https://www.googleapis.com/oauth2/v2/userinfo?fields=email&access_token=" + accessToken);
                 JObject jo = Newtonsoft.Json.Linq.JObject.Parse(jsonString);
                 JToken jtEmail = jo["email"];
                 String email = jtEmail.ToString();
@@ -213,7 +241,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                     if (rgx.IsMatch(ex.Message)) {
                         if (Settings.Instance.UsingPersonalAPIkeys()) {
                             String msg = "If you are using your own API keys, you must also enable the Google+ API.";
-                            MessageBox.Show(msg, "Missing API Service", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Exclamation);
+                            OgcsMessageBox.Show(msg, "Missing API Service", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Exclamation);
                             throw new System.ApplicationException(msg);
                         } else {
                             if (getEmailAttempts > 1) {
@@ -225,6 +253,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                             }
                         }
                     } else {
+                        Forms.Main.Instance.Console.UpdateWithError("", (ex.InnerException != null ? ex.InnerException : ex));
                         throw;
                     }
                 }
@@ -306,6 +335,18 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 }
             } catch (Google.Apis.Auth.OAuth2.Responses.TokenResponseException ex) {
                 OGCSexception.AnalyseTokenResponse(ex);
+
+            } catch (Google.GoogleApiException ex) {
+                switch (GoogleOgcs.Calendar.HandleAPIlimits(ref ex, null)) {
+                    case Calendar.ApiException.throwException: throw;
+                    case Calendar.ApiException.freeAPIexhausted:
+                        OGCSexception.LogAsFail(ref ex);
+                        OGCSexception.Analyse(ex);
+                        System.ApplicationException aex = new System.ApplicationException(GoogleOgcs.Calendar.Instance.SubscriptionInvite, ex);
+                        OGCSexception.LogAsFail(ref aex);
+                        GoogleOgcs.Calendar.Instance.Service = null;
+                        throw aex;
+                }
 
             } catch (System.Exception ex) {
                 log.Error(ex.Message);

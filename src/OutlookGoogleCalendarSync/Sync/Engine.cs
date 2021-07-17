@@ -1,15 +1,23 @@
-﻿using Google.Apis.Calendar.v3.Data;
+﻿using log4net;
 using System;
-using System.ComponentModel;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-using log4net;
-using Microsoft.Office.Interop.Outlook;
 
 namespace OutlookGoogleCalendarSync.Sync {
     public partial class Engine {
+        public class Job {
+            public String RequestedBy { get; internal set; }
+            public String ProfileName { get; internal set; }
+            public Object Profile { get; internal set; }
+            public Job(String requestBy, String profileName, Object profile) {
+                this.RequestedBy = requestBy;
+                this.ProfileName = profileName;
+                this.Profile = profile;
+            }
+        }
+
         private static readonly ILog log = LogManager.GetLogger(typeof(Engine));
 
         private static Engine instance;
@@ -22,8 +30,29 @@ namespace OutlookGoogleCalendarSync.Sync {
                 instance = value;
             }
         }
+        Timer queueTimer;
+        List<Dictionary<String, Job>> queue; //Generic Queue object would be nice, but then can't dedupe
 
-        public Engine() { }
+        public Engine() {
+            this.queue = new List<Dictionary<String, Job>>();
+            this.queueTimer = new Timer();
+            this.queueTimer.Interval = 1000;
+            this.queueTimer.Tick += QueueTimer_Tick;
+            this.queueTimer.Start();
+        }
+
+        private void QueueTimer_Tick(object sender, EventArgs e) {
+            log.UltraFine("Sync queue size: "+ queue.Count());
+
+            if (queue.Count() == 0) return;
+            if (this.ActiveProfile != null) return;
+
+            Job job = queue[0].Values.First();
+            queue.RemoveAt(0);
+            log.Info("Scheduled sync started (" + job.RequestedBy + ") for profile: " + job.ProfileName);
+            this.ActiveProfile = job.Profile;
+            Engine.Instance.Start(updateSyncSchedule: (job.RequestedBy == "AutoSyncTimer"));
+        }
 
         /// <summary>
         /// The profile currently set to be synced, either manually from GUI settings or scheduled from a Timer.
@@ -72,18 +101,23 @@ namespace OutlookGoogleCalendarSync.Sync {
             ManualForceCompare = false;
             if (sender != null && sender.GetType().ToString().EndsWith("Timer")) { //Automated sync
                 Forms.Main.Instance.NotificationTray.UpdateItem("delayRemove", enabled: false);
-                if (Forms.Main.Instance.bSyncNow.Text == "Start Sync") {
-                    Timer aTimer = sender as Timer;
-                    log.Info("Scheduled sync started (" + aTimer.Tag.ToString() + ").");
-                    if (aTimer.Tag.ToString() == "PushTimer") Start(updateSyncSchedule: false);
-                    else if (aTimer.Tag.ToString() == "AutoSyncTimer") Sync.Engine.Instance.Start(updateSyncSchedule: true);
-                } else if (Forms.Main.Instance.bSyncNow.Text == "Stop Sync") {
-                    log.Warn("Automated sync triggered whilst previous sync is still running. Ignoring this new request.");
-                    if (this.bwSync == null)
-                        //May be inbetween setting button to "Stop Sync" and actually starting background worker
-                        log.Debug("Background worker is null, sync in process of initialising?");
-                    else
-                        log.Debug("Background worker is busy? A:" + bwSync.IsBusy.ToString());
+                Timer aTimer = sender as Timer;
+                Object timerProfile = null;
+                String profileName = "";
+
+                if (aTimer.Tag.ToString() == "PushTimer" && aTimer is PushSyncTimer)
+                    timerProfile = (aTimer as PushSyncTimer).owningProfile;
+                else if (aTimer.Tag.ToString() == "AutoSyncTimer" && aTimer is SyncTimer)
+                    timerProfile = (aTimer as SyncTimer).owningProfile;
+
+                if (timerProfile is SettingsStore.Calendar)
+                    profileName = (timerProfile as SettingsStore.Calendar)._ProfileName;
+
+                if (Sync.Engine.Instance.queue.Exists(q => q.ContainsKey(profileName)))
+                    log.Warn("Sync of profile '" + profileName + "' requested by " + aTimer.Tag.ToString() + " already previously queued.");
+                else {
+                    queue.Add(new Dictionary<String, Job>() { { profileName, new Job(aTimer.Tag.ToString(), profileName, timerProfile) } });
+                    aTimer.Stop();
                 }
 
             } else { //Manual sync
@@ -94,7 +128,6 @@ namespace OutlookGoogleCalendarSync.Sync {
                         OgcsMessageBox.Show("A sync is already running. Please wait for it to complete and then try again.", "Sync already running", MessageBoxButtons.OK, MessageBoxIcon.Hand);
                         return;
                     }
-                    Sync.Engine.Instance.ActiveProfile = Forms.Main.Instance.ActiveCalendarProfile;
                     if (Control.ModifierKeys == Keys.Shift) {
                         if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection == Direction.Bidirectional) {
                             OgcsMessageBox.Show("Forcing a full sync is not allowed whilst in 2-way sync mode.\r\nPlease temporarily chose a direction to sync in first.",
@@ -104,6 +137,7 @@ namespace OutlookGoogleCalendarSync.Sync {
                         log.Info("Shift-click has forced a compare of all items");
                         ManualForceCompare = true;
                     }
+                    this.ActiveProfile = Forms.Main.Instance.ActiveCalendarProfile;
                     Start(updateSyncSchedule: false);
 
                 } else if (Forms.Main.Instance.bSyncNow.Text == "Stop Sync") {
@@ -116,6 +150,13 @@ namespace OutlookGoogleCalendarSync.Sync {
                     } else {
                         Forms.Main.Instance.Console.Update("Repeated cancellation requested - forcefully aborting sync!", Console.Markup.warning);
                         AbortSync();
+                    }
+                    if (queue.Count() > 0) {
+                        if (OgcsMessageBox.Show("There are " + queue.Count() + " sync(s) still queued to run. Would you like to cancel these too?",
+                            "Clear queued syncs?", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) {
+                            log.Info("User requested clear down of sync queue.");
+                            queue.Clear();
+                        }
                     }
                 }
             }
@@ -133,8 +174,9 @@ namespace OutlookGoogleCalendarSync.Sync {
             }
         }
 
-        public void Start(Boolean updateSyncSchedule = true) {
+        private void Start(Boolean updateSyncSchedule = true) {
             if (Settings.GetProfileType(this.ActiveProfile) == Settings.ProfileType.Calendar) {
+                Forms.Main.Instance.NotificationTray.ShowBubbleInfo("Autosyncing calendars: " + (this.ActiveProfile as SettingsStore.Calendar).SyncDirection.Name + "...");
                 Sync.Engine.Calendar.Instance.Profile = this.ActiveProfile as SettingsStore.Calendar;
                 Sync.Engine.Calendar.Instance.StartSync(updateSyncSchedule);
             }

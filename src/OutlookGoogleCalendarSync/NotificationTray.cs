@@ -151,9 +151,9 @@ namespace OutlookGoogleCalendarSync {
             Forms.Main.Instance.Console.Update("Next sync delayed for 1 hour.");
             foreach (SettingsStore.Calendar cal in Settings.Instance.Calendars) {
                 if (cal.OgcsTimer == null) continue;
+                log.Info("Delaying sync for 1 hour: " + cal._ProfileName);
                 cal.OgcsTimer.SetNextSync(60, fromNow: true);
-                if (cal.OutlookPush) cal.DeregisterForPushSync();
-                log.Info("Sync delayed for 1 hour: " + cal._ProfileName);
+                cal.DeregisterForPushSync();
             }
             UpdateItem("delayRemove", enabled: true);
         }
@@ -161,9 +161,9 @@ namespace OutlookGoogleCalendarSync {
             Forms.Main.Instance.Console.Update("Next sync delayed for 2 hours.");
             foreach (SettingsStore.Calendar cal in Settings.Instance.Calendars) {
                 if (cal.OgcsTimer == null) continue;
+                log.Info("Delaying sync for 2 hours: " + cal._ProfileName);
                 cal.OgcsTimer.SetNextSync(2 * 60, fromNow: true);
-                if (cal.OutlookPush) cal.DeregisterForPushSync();
-                log.Info("Sync delayed for 2 hours: " + cal._ProfileName);
+                cal.DeregisterForPushSync();
             }
             UpdateItem("delayRemove", enabled: true);
         }
@@ -171,9 +171,9 @@ namespace OutlookGoogleCalendarSync {
             Forms.Main.Instance.Console.Update("Next sync delayed for 4 hours.");
             foreach (SettingsStore.Calendar cal in Settings.Instance.Calendars) {
                 if (cal.OgcsTimer == null) continue;
+                log.Info("Delaying sync for 4 hours: " + cal._ProfileName);
                 cal.OgcsTimer.SetNextSync(4 * 60, fromNow: true);
-                if (cal.OutlookPush) cal.DeregisterForPushSync();
-                log.Info("Sync delayed for 4 hours: " + cal._ProfileName);
+                cal.DeregisterForPushSync();
             }
             UpdateItem("delayRemove", enabled: true);
         }
@@ -181,9 +181,9 @@ namespace OutlookGoogleCalendarSync {
             Forms.Main.Instance.Console.Update("Next sync delay removed.");
             foreach (SettingsStore.Calendar cal in Settings.Instance.Calendars) {
                 if (cal.OgcsTimer == null) continue;
+                log.Info("Removing sync delay: " + cal._ProfileName);
                 cal.OgcsTimer.SetNextSync();
-                if (cal.OutlookPush) cal.RegisterForPushSync();
-                log.Info("Sync delay removed: " + cal._ProfileName);
+                cal.RegisterForPushSync();
             }
             UpdateItem("delayRemove", enabled: false);
         }

@@ -464,7 +464,7 @@ namespace OutlookGoogleCalendarSync {
             if (OutlookOgcs.CustomProperty.Exists(ai, OutlookOgcs.CustomProperty.MetadataId.gEventID)) {
                 String googleIdValue = OutlookOgcs.CustomProperty.Get(ai, OutlookOgcs.CustomProperty.MetadataId.gEventID);
                 String googleCalValue = OutlookOgcs.CustomProperty.Get(ai, OutlookOgcs.CustomProperty.MetadataId.gCalendarId);
-                if (googleCalValue == null || googleCalValue == Forms.Main.Instance.ActiveCalendarProfile.UseGoogleCalendar.Id) {
+                if (googleCalValue == null || googleCalValue == Sync.Engine.Calendar.Instance.Profile.UseGoogleCalendar.Id) {
                     Event ev = GoogleOgcs.Calendar.Instance.GetCalendarEntry(googleIdValue);
                     if (ev != null) {
                         events.Add(ev);
@@ -475,7 +475,7 @@ namespace OutlookGoogleCalendarSync {
             }
             if (!haveMatchingEv) {
                 events = GoogleOgcs.Calendar.Instance.GetCalendarEntriesInRange(ai.Start.Date, ai.Start.Date.AddDays(1));
-                if (Forms.Main.Instance.ActiveCalendarProfile.SyncDirection != Sync.Direction.GoogleToOutlook) {
+                if (Sync.Engine.Calendar.Instance.Profile.SyncDirection != Sync.Direction.GoogleToOutlook) {
                     List<AppointmentItem> ais = new List<AppointmentItem>();
                     ais.Add(ai);
                     GoogleOgcs.Calendar.Instance.ReclaimOrphanCalendarEntries(ref events, ref ais, neverDelete: true);

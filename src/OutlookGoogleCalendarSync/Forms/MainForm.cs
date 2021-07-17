@@ -246,7 +246,9 @@ namespace OutlookGoogleCalendarSync.Forms {
             } else {
                 SettingsStore.Calendar profile = ActiveCalendarProfile;
                 #region Profile
+                ProfileVal = profile._ProfileName;
                 LastSyncVal = profile.LastSyncDateText;
+                NextSyncVal = profile.OgcsTimer?.NextSyncDateText;
                 #endregion
                 #region Outlook box
                 #region Mailbox
@@ -742,11 +744,15 @@ namespace OutlookGoogleCalendarSync.Forms {
         }
 
         #region Accessors
+        public String ProfileVal {
+            get { return lProfileVal.Text; }
+            set { SetControlPropertyThreadSafe(lProfileVal, "Text", value); }
+        }
         public String NextSyncVal {
             set { SetControlPropertyThreadSafe(lNextSyncVal, "Text", value); }
         }
         public String LastSyncVal {
-            set { lLastSyncVal.Text = value; }
+            set { SetControlPropertyThreadSafe(lLastSyncVal, "Text", value); }
         }
         public void StrikeOutNextSyncVal(Boolean strikeout) {
             lNextSyncVal.Font = new Font(lNextSyncVal.Font, strikeout ? FontStyle.Strikeout : FontStyle.Regular);
@@ -1383,7 +1389,7 @@ namespace OutlookGoogleCalendarSync.Forms {
         #region Sync options
         private void syncOptionSizing(GroupBox section, PictureBox sectionImage, Boolean? expand = null) {
             int minSectionHeight = Convert.ToInt16(22 * magnification);
-            Boolean expandSection = expand ?? false || section.Height - minSectionHeight <= 5;
+            Boolean expandSection = expand ?? section.Height - minSectionHeight <= 5;
             if (expandSection) {
                 if (!(expand ?? false)) sectionImage.Image.RotateFlip(RotateFlipType.Rotate90FlipNone);
                 switch (section.Name.ToString().Split('_').LastOrDefault()) {
@@ -1395,7 +1401,8 @@ namespace OutlookGoogleCalendarSync.Forms {
                 }
                 section.Height = Convert.ToInt16(section.Height * magnification);
             } else {
-                sectionImage.Image.RotateFlip(RotateFlipType.Rotate270FlipNone);
+                if (section.Height > minSectionHeight) 
+                    sectionImage.Image.RotateFlip(RotateFlipType.Rotate270FlipNone);
                 section.Height = minSectionHeight;
             }
             sectionImage.Refresh();

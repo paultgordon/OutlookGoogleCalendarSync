@@ -64,7 +64,7 @@ namespace OutlookGoogleCalendarSync {
         private Boolean suppressSocialPopup;
         private bool? cloudLogging;
 
-        public Settings() { }
+        private Settings() { }
 
         //Default values before Loading() from xml and attribute not yet serialized
         [OnDeserializing]
@@ -422,6 +422,24 @@ namespace OutlookGoogleCalendarSync {
             }
             log.Warn("Unknown profile type: " + settingsStore.GetType().ToString());
             return ProfileType.Unknown;
+        }
+
+        public SettingsStore.Calendar ProfileInPlay() {
+            StackTrace stackTrace = new StackTrace();
+            StackFrame[] stackFrames = stackTrace.GetFrames().Reverse().ToArray();
+
+            String[] FormMethods = new String[] { "updateGUIsettings", "UpdateGUIsettings_Profile", "<StartSync>b__0", "miCatRefresh_Click", "GetMyGoogleCalendars_Click" };
+            String[] TimerMethods = new String[] { "OnTick" };
+
+            foreach (StackFrame frame in stackFrames) {
+                //log.Debug("Frame:" + frame.GetMethod().Name);
+                if (FormMethods.Contains(frame.GetMethod().Name))
+                    return Forms.Main.Instance.ActiveCalendarProfile;
+                else if (TimerMethods.Contains(frame.GetMethod().Name))
+                    return Sync.Engine.Calendar.Instance.Profile;
+            }
+            log.Warn(stackFrames.ToString());
+            return null;
         }
 
         /// <summary>

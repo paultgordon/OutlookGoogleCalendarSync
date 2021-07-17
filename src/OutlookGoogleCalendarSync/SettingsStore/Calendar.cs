@@ -176,7 +176,8 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
                 lastSyncDate = value;
                 if (!Settings.Instance.Loading()) {
                     XMLManager.ExportElement(this, "LastSyncDate", value, Settings.ConfigFile);
-                    Forms.Main.Instance.LastSyncVal = LastSyncDateText;
+                    if (Forms.Main.Instance.ProfileVal == this._ProfileName)
+                        Forms.Main.Instance.LastSyncVal = this.LastSyncDateText;
                 }
             }
         }
@@ -185,11 +186,14 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             get { return lastSyncDate.ToLongDateString() + " @ " + lastSyncDate.ToLongTimeString(); }
         }
 
+        /// <summary>
+        /// Make this calendar profile display settings in GUI
+        /// </summary>
         public void SetActive() {
             if (Forms.Main.Instance.ActiveCalendarProfile != null &&
                 Forms.Main.Instance.ActiveCalendarProfile == this) return;
 
-            log.Debug("Changing active settings profile '" + this._ProfileName + "'.");
+            log.Debug("Changing active settings profile: " + this._ProfileName);
             Forms.Main.Instance.ActiveCalendarProfile = this;
 
             if (Forms.Main.Instance.Visible) 
@@ -197,7 +201,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         }
 
         public void InitialiseTimer() {
-            log.Debug("Creating the calendar timer for auto synchronisation on profile '" + this._ProfileName + "'");
+            log.Debug("Creating the calendar timer for auto synchronisation on profile: " + this._ProfileName);
             OgcsTimer = new Sync.SyncTimer(this);
         }
 
@@ -205,7 +209,7 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         public void RegisterForPushSync() {
             if (!this.OutlookPush || this.SyncDirection.Id == Sync.Direction.GoogleToOutlook.Id) return;
 
-            log.Info("Creating the calendar timer for the push synchronisation on profile '" + this._ProfileName + "'");
+            log.Info("Start monitoring for Outlook appointments changes on profile: " + this._ProfileName);
             if (this.OgcsPushTimer == null)
                 this.OgcsPushTimer = Sync.PushSyncTimer.Instance(this);
             if (!this.OgcsPushTimer.Running())
@@ -213,15 +217,16 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
         }
 
         public void DeregisterForPushSync() {
-            log.Info("Stop monitoring for Outlook appointment changes on profile '" + this._ProfileName + "'");
+            log.Info("Stop monitoring for Outlook appointment changes on profile: " + this._ProfileName);
             if (this.OgcsPushTimer != null && this.OgcsPushTimer.Running())
                 this.OgcsPushTimer.Activate(false);
         }
         #endregion
 
-
         public void LogSettings() {
             log.Info("CALENDAR SYNC SETTINGS");
+            log.Info("Profile: " + _ProfileName);
+            log.Info("Last Synced: " + LastSyncDate);
 
             log.Info("OUTLOOK SETTINGS:-");
             log.Info("  Service: " + OutlookService.ToString());
@@ -290,5 +295,18 @@ namespace OutlookGoogleCalendarSync.SettingsStore {
             log.Info("    UseOutlookDefaultReminder: " + UseOutlookDefaultReminder);
             log.Info("    ReminderDND: " + ReminderDND + " (" + ReminderDNDstart.ToString("HH:mm") + "-" + ReminderDNDend.ToString("HH:mm") + ")");
         }
+
+        public static SettingsStore.Calendar GetCalendarProfile(Object settingsStore) {
+            if (settingsStore is SettingsStore.Calendar)
+                return settingsStore as SettingsStore.Calendar;
+            else throw new ArgumentException("Expected calendar settings, received " + Settings.GetProfileType(settingsStore));
+        }
+
+        #region Override Methods
+        public override bool Equals(Object calendarProfile) {
+            return (calendarProfile is SettingsStore.Calendar && this._ProfileName == (calendarProfile as SettingsStore.Calendar)._ProfileName);
+        }
+        public override int GetHashCode() { return 0; } //Suppress compiler warning CS0659
+        #endregion
     }
 }

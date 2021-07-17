@@ -45,6 +45,8 @@
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
             this.tabApp = new System.Windows.Forms.TabControl();
             this.tabPage_Sync = new System.Windows.Forms.TabPage();
+            this.lProfileVal = new System.Windows.Forms.Label();
+            this.lProfile = new System.Windows.Forms.Label();
             this.cbMuteClicks = new System.Windows.Forms.CheckBox();
             this.consolePanel = new System.Windows.Forms.Panel();
             this.consoleWebBrowser = new System.Windows.Forms.WebBrowser();
@@ -269,7 +271,6 @@
             this.cbExcludeDeclinedInvites = new System.Windows.Forms.CheckBox();
             this.cbSingleCategoryOnly = new System.Windows.Forms.CheckBox();
             this.tbMaxAttendees = new System.Windows.Forms.NumericUpDown();
-            this.btProfileAction = new OutlookGoogleCalendarSync.Extensions.MenuButton();
             this.tabApp.SuspendLayout();
             this.tabPage_Sync.SuspendLayout();
             this.consolePanel.SuspendLayout();
@@ -338,6 +339,8 @@
             // tabPage_Sync
             // 
             this.tabPage_Sync.BackColor = System.Drawing.Color.White;
+            this.tabPage_Sync.Controls.Add(this.lProfileVal);
+            this.tabPage_Sync.Controls.Add(this.lProfile);
             this.tabPage_Sync.Controls.Add(this.cbMuteClicks);
             this.tabPage_Sync.Controls.Add(this.consolePanel);
             this.tabPage_Sync.Controls.Add(this.tbSyncNote);
@@ -354,6 +357,25 @@
             this.tabPage_Sync.Size = new System.Drawing.Size(487, 542);
             this.tabPage_Sync.TabIndex = 0;
             this.tabPage_Sync.Text = "Sync";
+            // 
+            // lProfileVal
+            // 
+            this.lProfileVal.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lProfileVal.Location = new System.Drawing.Point(109, 7);
+            this.lProfileVal.Name = "lProfileVal";
+            this.lProfileVal.Size = new System.Drawing.Size(370, 14);
+            this.lProfileVal.TabIndex = 41;
+            this.lProfileVal.Text = "Default";
+            // 
+            // lProfile
+            // 
+            this.lProfile.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lProfile.Location = new System.Drawing.Point(6, 7);
+            this.lProfile.Name = "lProfile";
+            this.lProfile.Size = new System.Drawing.Size(62, 14);
+            this.lProfile.TabIndex = 40;
+            this.lProfile.Text = "Profile:";
             // 
             // cbMuteClicks
             // 
@@ -435,7 +457,7 @@
             // 
             this.lNextSyncVal.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.lNextSyncVal.Location = new System.Drawing.Point(109, 28);
+            this.lNextSyncVal.Location = new System.Drawing.Point(109, 37);
             this.lNextSyncVal.Name = "lNextSyncVal";
             this.lNextSyncVal.Size = new System.Drawing.Size(370, 14);
             this.lNextSyncVal.TabIndex = 4;
@@ -445,7 +467,7 @@
             // 
             this.lLastSyncVal.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.lLastSyncVal.Location = new System.Drawing.Point(109, 14);
+            this.lLastSyncVal.Location = new System.Drawing.Point(109, 22);
             this.lLastSyncVal.Name = "lLastSyncVal";
             this.lLastSyncVal.Size = new System.Drawing.Size(370, 14);
             this.lLastSyncVal.TabIndex = 3;
@@ -454,7 +476,7 @@
             // lNextSync
             // 
             this.lNextSync.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lNextSync.Location = new System.Drawing.Point(6, 28);
+            this.lNextSync.Location = new System.Drawing.Point(6, 37);
             this.lNextSync.Name = "lNextSync";
             this.lNextSync.Size = new System.Drawing.Size(120, 14);
             this.lNextSync.TabIndex = 2;
@@ -463,7 +485,7 @@
             // lLastSync
             // 
             this.lLastSync.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lLastSync.Location = new System.Drawing.Point(5, 14);
+            this.lLastSync.Location = new System.Drawing.Point(5, 22);
             this.lLastSync.Name = "lLastSync";
             this.lLastSync.Size = new System.Drawing.Size(107, 14);
             this.lLastSync.TabIndex = 2;
@@ -2082,7 +2104,6 @@
             this.gbAppBehaviour_Proxy.ForeColor = System.Drawing.SystemColors.MenuHighlight;
             this.gbAppBehaviour_Proxy.Location = new System.Drawing.Point(12, 122);
             this.gbAppBehaviour_Proxy.MinimumSize = new System.Drawing.Size(366, 0);
-            this.gbAppBehaviour_Proxy.MinimumSize = new System.Drawing.Size(366, 0);
             this.gbAppBehaviour_Proxy.Name = "gbAppBehaviour_Proxy";
             this.gbAppBehaviour_Proxy.Size = new System.Drawing.Size(366, 197);
             this.gbAppBehaviour_Proxy.TabIndex = 46;
@@ -2983,7 +3004,7 @@
             this.lMilestoneBlurb.Location = new System.Drawing.Point(103, 5);
             this.lMilestoneBlurb.MaximumSize = new System.Drawing.Size(169, 39);
             this.lMilestoneBlurb.Name = "lMilestoneBlurb";
-            this.lMilestoneBlurb.Size = new System.Drawing.Size(174, 39);
+            this.lMilestoneBlurb.Size = new System.Drawing.Size(169, 39);
             this.lMilestoneBlurb.TabIndex = 41;
             this.lMilestoneBlurb.Text = "Let others know you\'ve found this application by sharing through your favourite s" +
     "ocial media site below!";
@@ -3596,5 +3617,7 @@
         public System.Windows.Forms.ComboBox ddProfile;
         private System.Windows.Forms.Label label34;
         private Extensions.MenuButton btProfileAction;
+        private System.Windows.Forms.Label lProfileVal;
+        private System.Windows.Forms.Label lProfile;
     }
 }

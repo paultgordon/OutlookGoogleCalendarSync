@@ -16,31 +16,33 @@ namespace OutlookGoogleCalendarSync.Sync {
             /// <summary>
             /// The calendar settings profile currently being synced.
             /// </summary>
-            public SettingsStore.Calendar Profile { protected set; get; }
+            public SettingsStore.Calendar Profile { internal set; get; }
 
             private int consecutiveSyncFails = 0;
 
             private static Calendar instance;
             public static Calendar Instance {
                 get {
-                    if (instance == null) instance = new Calendar(null);
+                    if (instance == null) instance = new Calendar();
                     return instance;
                 }
                 set {
                     instance = value;
                 }
             }
-
-            public Calendar(SettingsStore.Calendar calendarProfile) {
-                this.Profile = calendarProfile;
+            public Calendar() {
+                Profile = Sync.Engine.Instance.ActiveProfile as SettingsStore.Calendar;
             }
 
             public void StartSync(Boolean updateSyncSchedule = true) {
                 Forms.Main mainFrm = Forms.Main.Instance;
+                mainFrm.bSyncNow.Text = "Stop Sync";
+                mainFrm.NotificationTray.UpdateItem("sync", "&Stop Sync");
+
                 this.Profile.LogSettings();
                 try {
                     Sync.Engine.Instance.SyncStarted = DateTime.Now;
-                    String cacheNextSync = Forms.Main.Instance.ActiveCalendarProfile.OgcsTimer.NextSyncDateText;
+                    String cacheNextSync = this.Profile.OgcsTimer.NextSyncDateText;
 
                     mainFrm.Console.Clear();
 
@@ -78,13 +80,12 @@ namespace OutlookGoogleCalendarSync.Sync {
                         return;
                     }
                     GoogleOgcs.Calendar.APIlimitReached_attendee = false;
-                    Forms.Main.Instance.bSyncNow.Text = "Stop Sync";
-                    Forms.Main.Instance.NotificationTray.UpdateItem("sync", "&Stop Sync");
 
-                    Forms.Main.Instance.NextSyncVal = "In progress...";
+                    this.Profile.OgcsTimer.NextSyncDateText = "In progress...";
 
                     StringBuilder sb = new StringBuilder();
                     Forms.Main.Instance.Console.BuildOutput("Sync version: " + System.Windows.Forms.Application.ProductVersion, ref sb);
+                    Forms.Main.Instance.Console.BuildOutput("Profile: " + this.Profile._ProfileName, ref sb);
                     Forms.Main.Instance.Console.BuildOutput((Sync.Engine.Instance.ManualForceCompare ? "Full s" : "S") + "ync started at " + DateTime.Now.ToString(), ref sb);
                     Forms.Main.Instance.Console.BuildOutput("Syncing from " + this.Profile.SyncStart.ToShortDateString() +
                         " to " + this.Profile.SyncEnd.ToShortDateString(), ref sb);
@@ -198,11 +199,13 @@ namespace OutlookGoogleCalendarSync.Sync {
                 } finally {
                     Sync.Engine.Instance.bwSync?.Dispose();
                     Sync.Engine.Instance.bwSync = null;
+                    Sync.Engine.Instance.ActiveProfile = null;
                     mainFrm.bSyncNow.Text = "Start Sync";
                     mainFrm.NotificationTray.UpdateItem("sync", "&Sync Now");
                     if (Settings.Instance.MuteClickSounds) Console.MuteClicks(false);
 
-                    if (this.Profile.OutlookPush) this.Profile.RegisterForPushSync();
+                    this.Profile.OgcsTimer.Start();
+                    this.Profile.RegisterForPushSync();
 
                     //Release Outlook reference if GUI not available. 
                     //Otherwise, tasktray shows "another program is using outlook" and it doesn't send and receive emails
@@ -222,9 +225,10 @@ namespace OutlookGoogleCalendarSync.Sync {
                 }
                 if (!updateSyncSchedule) {
                     if (this.Profile.SyncInterval != 0) {
-                        Forms.Main.Instance.NextSyncVal = this.Profile.OgcsTimer.NextSyncDateText;
+                        this.Profile.OgcsTimer.NextSyncDate = this.Profile.OgcsTimer.NextSyncDate; //Force update of MainForm, if profile displaying
                         this.Profile.OgcsTimer.Activate(true);
-                    } else Forms.Main.Instance.NextSyncVal = "Inactive";
+                    } else
+                        this.Profile.OgcsTimer.NextSyncDateText = "Inactive";
                 } else {
                     if (syncedOk) {
                         this.Profile.OgcsTimer.LastSyncDate = Sync.Engine.Instance.SyncStarted;

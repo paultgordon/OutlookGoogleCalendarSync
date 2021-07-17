@@ -5,7 +5,7 @@ using System.Windows.Forms;
 namespace OutlookGoogleCalendarSync.Sync {
     public class SyncTimer : Timer {
         private static readonly ILog log = LogManager.GetLogger(typeof(SyncTimer));
-        private object owningProfile;
+        public object owningProfile { get; internal set; }
         
         public DateTime LastSyncDate { internal get; set; }
 
@@ -29,7 +29,7 @@ namespace OutlookGoogleCalendarSync.Sync {
             set {
                 nextSyncDateText = value;
                 var profile = owningProfile as SettingsStore.Calendar;
-                if (Forms.Main.Instance.ActiveCalendarProfile._ProfileName == profile._ProfileName)
+                if (Forms.Main.Instance.ProfileVal == profile._ProfileName)
                     Forms.Main.Instance.NextSyncVal = value;
             }
         }
@@ -49,9 +49,6 @@ namespace OutlookGoogleCalendarSync.Sync {
             log.Debug("Scheduled sync triggered.");
 
             if (!Sync.Engine.Instance.SyncingNow) {
-                Sync.Engine.Instance.ActiveProfile = this.owningProfile;
-                if (Settings.GetProfileType(this.owningProfile) == Settings.ProfileType.Calendar)
-                    Forms.Main.Instance.NotificationTray.ShowBubbleInfo("Autosyncing calendars: " + (Engine.Instance.ActiveProfile as SettingsStore.Calendar).SyncDirection.Name + "...");
                 Forms.Main.Instance.Sync_Click(sender, null);
             } else {
                 log.Debug("Busy syncing already. Rescheduled for 5 mins time.");
@@ -80,7 +77,7 @@ namespace OutlookGoogleCalendarSync.Sync {
         public void SetNextSync(int delayMins, Boolean fromNow = false, Boolean calculateInterval = true) {
             int syncInterval = 0;
             if (owningProfile is SettingsStore.Calendar) {
-                syncInterval = Settings.GetCalendarProfile(owningProfile).SyncInterval;
+                syncInterval = SettingsStore.Calendar.GetCalendarProfile(owningProfile).SyncInterval;
             }            
             
             if (syncInterval != 0) {
@@ -140,7 +137,7 @@ namespace OutlookGoogleCalendarSync.Sync {
 
     public class PushSyncTimer : Timer {
         private static readonly ILog log = LogManager.GetLogger(typeof(PushSyncTimer));
-        private object owningProfile;
+        public object owningProfile { get; internal set; }
         private DateTime lastRunTime;
         private Int32 lastRunItemCount;
         private Int16 failures = 0;
@@ -180,16 +177,12 @@ namespace OutlookGoogleCalendarSync.Sync {
             try {
                 if (OutlookOgcs.Calendar.Instance.IOutlook.NoGUIexists()) return;
 
-                System.Collections.Generic.List<Microsoft.Office.Interop.Outlook.AppointmentItem> items = OutlookOgcs.Calendar.Instance.GetCalendarEntriesInRange((SettingsStore.Calendar)this.owningProfile, true);
+                SettingsStore.Calendar profile = this.owningProfile as SettingsStore.Calendar;
+                System.Collections.Generic.List<Microsoft.Office.Interop.Outlook.AppointmentItem> items = OutlookOgcs.Calendar.Instance.GetCalendarEntriesInRange(profile, true);
 
                 if (items.Count < this.lastRunItemCount || items.FindAll(x => x.LastModificationTime > this.lastRunTime).Count > 0) {
                     log.Debug("Changes found for Push sync.");
-                    Forms.Main.Instance.NotificationTray.ShowBubbleInfo("Autosyncing calendars: " + (this.owningProfile as SettingsStore.Calendar).SyncDirection.Name + "...");
-                    if (!Sync.Engine.Instance.SyncingNow) {
-                        Forms.Main.Instance.Sync_Click(sender, null);
-                    } else {
-                        log.Debug("Busy syncing already. No need to push.");
-                    }
+                    Forms.Main.Instance.Sync_Click(sender, null);
                 } else {
                     log.Fine("No changes found.");
                 }

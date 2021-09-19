@@ -21,8 +21,9 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
         public static Calendar Instance {
             get {
                 if (instance == null) {
-                    instance = new GoogleOgcs.Calendar();
-                    instance.Authenticator = new GoogleOgcs.Authenticator();
+                    instance = new GoogleOgcs.Calendar {
+                        Authenticator = new GoogleOgcs.Authenticator()
+                    };
                     instance.Authenticator.GetAuthenticated();
                     if (instance.Authenticator.Authenticated)
                         instance.Authenticator.OgcsUserStatus();
@@ -94,7 +95,13 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
 
         public EphemeralProperties EphemeralProperties = new EphemeralProperties();
 
-        public List<GoogleCalendarListEntry> GetCalendars() {
+        private List<GoogleCalendarListEntry> calendarList = new List<GoogleCalendarListEntry>();
+        public List<GoogleCalendarListEntry> CalendarList {
+            get { return calendarList; }
+            protected set { calendarList = value; }
+        }
+
+        public void GetCalendars() {
             CalendarList request = null;
             String pageToken = null;
             List<GoogleCalendarListEntry> result = new List<GoogleCalendarListEntry>();
@@ -105,6 +112,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                     try {
                         CalendarListResource.ListRequest lr = Service.CalendarList.List();
                         lr.PageToken = pageToken;
+                        lr.ShowHidden = true;
                         request = lr.Execute();
                         break;
                     } catch (Google.GoogleApiException ex) {
@@ -140,7 +148,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 }
             } while (pageToken != null);
 
-            return result;
+            this.CalendarList = result;
         }
 
         public List<Event> GetCalendarEntriesInRecurrence(String recurringEventId) {
@@ -316,6 +324,12 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 result = result.Except(cancelled).ToList();
             }
 
+            List<Event> endsOnSyncStart = result.Where(ev => (ev.End != null && (ev.End.DateTime ?? DateTime.Parse(ev.End.Date)) == from)).ToList();
+            if (endsOnSyncStart.Count > 0) {
+                log.Debug(endsOnSyncStart.Count + " Google Events end at midnight of the sync start date window.");
+                result = result.Except(endsOnSyncStart).ToList();
+            }
+
             if (profile.ExcludeDeclinedInvites) {
                 List<Event> declined = result.Where(ev => string.IsNullOrEmpty(ev.RecurringEventId) && ev.Attendees != null && ev.Attendees.Count(a => a.Self == true && a.ResponseStatus == "declined") == 1).ToList();
                 if (declined.Count > 0) {
@@ -443,11 +457,11 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                 if (OutlookOgcs.Calendar.Instance.IsOKtoSyncReminder(ai)) {
                     if (ai.ReminderSet) {
                         ev.Reminders.UseDefault = false;
-                        EventReminder reminder = new EventReminder();
-                        reminder.Method = "popup";
-                        reminder.Minutes = ai.ReminderMinutesBeforeStart;
-                        ev.Reminders.Overrides = new List<EventReminder>();
-                        ev.Reminders.Overrides.Add(reminder);
+                        EventReminder reminder = new EventReminder {
+                            Method = "popup",
+                            Minutes = ai.ReminderMinutesBeforeStart
+                        };
+                        ev.Reminders.Overrides = new List<EventReminder> { reminder };
                     } else {
                         ev.Reminders.UseDefault = profile.UseGoogleDefaultReminder;
                     }
@@ -813,11 +827,11 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
                     if (ai.ReminderSet && OKtoSyncReminder) {
                         sb.AppendLine("Reminder: nothing => " + ai.ReminderMinutesBeforeStart);
                         ev.Reminders.UseDefault = false;
-                        EventReminder newReminder = new EventReminder();
-                        newReminder.Method = "popup";
-                        newReminder.Minutes = ai.ReminderMinutesBeforeStart;
-                        ev.Reminders.Overrides = new List<EventReminder>();
-                        ev.Reminders.Overrides.Add(newReminder);
+                        EventReminder newReminder = new EventReminder {
+                            Method = "popup",
+                            Minutes = ai.ReminderMinutesBeforeStart
+                        };
+                        ev.Reminders.Overrides = new List<EventReminder> { newReminder };
                         itemModified++;
 
                     } else if (ev.Reminders.Overrides == null) { //No Google email reminders either
@@ -1083,6 +1097,38 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
             } catch (System.Exception) {
                 Forms.Main.Instance.Console.Update("Unable to reclaim orphan calendar entries in Google calendar.", Console.Markup.error);
                 throw;
+            }
+        }
+
+        public void CleanDuplicateEntries(ref List<Event> google) {
+            //If a recurring series is altered for "this and following events", Google duplicates the original series.
+            //This includes the private ExtendedProperties, containing the Outlook IDs - not good, these need to be detected and removed
+
+            log.Debug("Checking for Events that have been duplicated.");
+            
+            List<Event> duplicateCheck = google.Where(w => w.ExtendedProperties != null && w.ExtendedProperties.Private__ != null).ToList();
+            duplicateCheck = duplicateCheck.
+                GroupBy(e => new { e.Created, oEntryId = e.ExtendedProperties?.Private__["outlook_EntryID"] }).
+                Where(g => g.Count() > 1).
+                SelectMany(x => x).ToList();
+            if (duplicateCheck.Count() == 0) return;
+            
+            log.Warn(duplicateCheck.Count() + " Events found with same creation date and Outlook EntryID.");
+            duplicateCheck.Sort((x, y) => (x.CreatedRaw + ":"+ (x.Sequence ?? 0)).CompareTo(y.CreatedRaw + ":" + (y.Sequence ?? 0)));
+            //Skip the first one, the original 
+            DateTime? lastSeenDuplicateSet = null;
+            for (int g = 0; g < duplicateCheck.Count(); g++) {
+                Event ev = duplicateCheck[g];
+                if (lastSeenDuplicateSet == null || lastSeenDuplicateSet != ev.Created) {
+                    lastSeenDuplicateSet = ev.Created;
+                    continue;
+                }
+                log.Info("Cleaning duplicate metadata from: " + GetEventSummary(ev));
+                google.Remove(ev);
+                CustomProperty.RemoveAll(ref ev);
+                this.UpdateCalendarEntry_save(ref ev);
+                google.Add(ev);
+                lastSeenDuplicateSet = ev.Created;
             }
         }
 
@@ -1860,8 +1906,7 @@ namespace OutlookGoogleCalendarSync.GoogleOgcs {
         /// </summary>
         private void throwApiException() {
             Google.GoogleApiException ex = new Google.GoogleApiException("Service", "limit 'Queries per day'");
-            Google.Apis.Requests.SingleError err = new Google.Apis.Requests.SingleError();
-            err.Reason = "rateLimitExceeded";
+            Google.Apis.Requests.SingleError err = new Google.Apis.Requests.SingleError { Reason = "rateLimitExceeded" };
             ex.Error = new Google.Apis.Requests.RequestError { Errors = new List<Google.Apis.Requests.SingleError>() };
             ex.Error.Errors.Add(err);
             throw ex;

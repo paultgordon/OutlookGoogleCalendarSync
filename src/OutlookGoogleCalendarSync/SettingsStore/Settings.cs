@@ -451,11 +451,11 @@ namespace OutlookGoogleCalendarSync {
                 if (Program.CalledByProcess("manualSynchronize,Sync_Click,updateGUIsettings,UpdateGUIsettings_Profile,miCatRefresh_Click," +
                     "GetMyGoogleCalendars_Click,btColourMap_Click,ColourPicker_Enter,OnSelectedIndexChanged,OnCheckedChanged")) {
                     aProfile = Forms.Main.Instance.ActiveCalendarProfile;
-                    log.Fine("Using profile Forms.Main.Instance.ActiveCalendarProfile");
+                    log.Debug("Using profile Forms.Main.Instance.ActiveCalendarProfile");
                 
                 } else if (Program.CalledByProcess("synchronize,OnTick")) {
                     aProfile = Sync.Engine.Calendar.Instance.Profile;
-                    log.Fine("Using profile Sync.Engine.Calendar.Instance.Profile");
+                    log.Debug("Using profile Sync.Engine.Calendar.Instance.Profile");
 
                 } else {
                     Program.StackTraceToString();

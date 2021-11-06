@@ -285,6 +285,7 @@ namespace OutlookGoogleCalendarSync.OutlookOgcs {
         private MAPIFolder getCalendarStore(NameSpace oNS) {
             MAPIFolder defaultCalendar = null;
             SettingsStore.Calendar profile = Settings.Profile.InPlay();
+            Program.StackTraceToString();
             if (profile.OutlookService == OutlookOgcs.Calendar.Service.AlternativeMailbox && profile.MailboxName != "") {
                 log.Debug("Finding Alternative Mailbox calendar folders");
                 Folders binFolders = null;
